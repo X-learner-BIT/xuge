@@ -27,7 +27,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
 router.get('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const note = await prisma.note.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
       include: { knowledgePoints: true },
     });
     if (!note) {
@@ -146,7 +146,7 @@ router.post('/text', authMiddleware, async (req: AuthRequest, res) => {
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     await prisma.note.deleteMany({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     res.json({ success: true });
   } catch (error) {
