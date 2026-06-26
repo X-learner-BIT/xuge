@@ -1,0 +1,12 @@
+{
+  "name": "xuge",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd server && npm install && npx prisma generate && npx tsc",
+    "start": "cd server && npm start"
+  },
+  "engines": {
+    "node": "22"
+  }
+}
