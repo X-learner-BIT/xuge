@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd server && npm install && npx prisma generate && npx tsc"
+startCommand = "cd server && npm start"
+
+[deploy]
+startCommand = "cd server && npm start"
+healthcheckPath = "/health"
+restartPolicyType = "on_failure"
