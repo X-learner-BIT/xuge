@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nickname  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes         Note[]
+  reviewRecords ReviewRecord[]
+
+  @@map("users")
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  contentType String   @default("text") // pdf, docx, text
+  content     String?  @db.Text
+  filePath    String?
+  aiSummary   String?  @db.Text
+  tags        String[] @default([])
+  status      String   @default("analyzing") // analyzing, completed, failed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  knowledgePoints KnowledgePoint[]
+
+  @@map("notes")
+}
+
+model KnowledgePoint {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+  domain      String?
+  mastery     Int     @default(0) // 0-100
+
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  questions Question[]
+
+  @@map("knowledge_points")
+}
+
+model Question {
+  id             String  @id @default(cuid())
+  questionText   String  @db.Text
+  options        String[]
+  correctAnswer  String
+  explanation    String  @db.Text
+  domain         String?
+
+  knowledgePointId String
+  knowledgePoint   KnowledgePoint @relation(fields: [knowledgePointId], references: [id], onDelete: Cascade)
+
+  reviewRecords ReviewRecord[]
+
+  @@map("questions")
+}
+
+model ReviewRecord {
+  id          String   @id @default(cuid())
+  userAnswer  String
+  isCorrect   Boolean
+  createdAt   DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("review_records")
+}

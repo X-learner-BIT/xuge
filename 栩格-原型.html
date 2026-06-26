@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>栩格 — AI 知识体检与复习助手</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-dark: #4f46e5;
+      --secondary: #14b8a6;
+      --secondary-light: #5eead4;
+      --accent: #a78bfa;
+      --bg: #f0f2f5;
+      --bg-card: #ffffff;
+      --bg-glass: rgba(255,255,255,0.7);
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --nav-width: 72px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ===== Scrollbar ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* ===== Sidebar Nav ===== */
+    .sidebar {
+      width: var(--nav-width);
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      z-index: 100;
+      transition: var(--transition);
+    }
+    .sidebar:hover { background: rgba(255,255,255,0.95); }
+    .sidebar-logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 18px;
+      margin-bottom: 28px;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .sidebar-logo:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.35);
+    }
+    .sidebar-logo i { font-size: 20px; }
+    .nav-items {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .nav-item {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      font-size: 20px;
+      text-decoration: none;
+    }
+    .nav-item:hover {
+      color: var(--primary);
+      background: rgba(99,102,241,0.08);
+    }
+    .nav-item.active {
+      color: white;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .nav-item .tooltip {
+      position: absolute;
+      left: calc(100% + 12px);
+      background: var(--text);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-4px);
+      transition: all 0.2s ease;
+    }
+    .nav-item:hover .tooltip {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .sidebar-bottom {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* ===== Main Content ===== */
+    .main {
+      flex: 1;
+      margin-left: var(--nav-width);
+      height: 100vh;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* ===== Top Bar ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 36px 12px 36px;
+      position: sticky;
+      top: 0;
+      background: rgba(240,242,245,0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 50;
+      border-bottom: 1px solid transparent;
+    }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .topbar-left h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .topbar-left .page-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .topbar-right .search-box {
+      display: flex;
+      align-items: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 14px;
+      transition: all var(--transition);
+    }
+    .topbar-right .search-box:focus-within {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .topbar-right .search-box i {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .topbar-right .search-box input {
+      border: none;
+      background: transparent;
+      padding: 9px 10px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      outline: none;
+      width: 200px;
+    }
+    .topbar-right .search-box input::placeholder { color: var(--text-muted); }
+    .topbar-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform var(--transition);
+    }
+    .topbar-avatar:hover { transform: scale(1.06); }
+
+    /* ===== Page Container ===== */
+    .page-container {
+      padding: 16px 36px 36px 36px;
+    }
+    .page {
+      display: none;
+      animation: pageIn 0.4s ease;
+    }
+    .page.active { display: block; }
+
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Cards ===== */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(226,232,240,0.6);
+      transition: all var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card-header {
+      padding: 20px 24px 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .card-body { padding: 20px 24px 24px 24px; }
+
+    /* ===== Grid Layouts ===== */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+
+    /* ===== Buttons ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+    }
+    .btn-secondary:hover { background: rgba(99,102,241,0.15); }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--primary-light);
+      color: var(--primary);
+      background: rgba(99,102,241,0.04);
+    }
+    .btn-sm { padding: 7px 16px; font-size: 13px; border-radius: 8px; }
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+
+    /* ===== Badge ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      gap: 4px;
+    }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+
+    /* ===== Progress Bar ===== */
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transition: width 0.8s ease;
+    }
+
+    /* ===== Login Page ===== */
+    .login-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .login-page.hidden { display: none; }
+    .login-bg-shapes {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .login-bg-shapes .shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.1;
+    }
+    .login-bg-shapes .shape:nth-child(1) {
+      width: 400px; height: 400px;
+      background: white;
+      top: -100px; right: -100px;
+    }
+    .login-bg-shapes .shape:nth-child(2) {
+      width: 300px; height: 300px;
+      background: white;
+      bottom: -80px; left: -80px;
+    }
+    .login-bg-shapes .shape:nth-child(3) {
+      width: 200px; height: 200px;
+      background: white;
+      top: 40%; left: 10%;
+    }
+    .login-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      z-index: 1;
+      animation: loginFadeIn 0.6s ease;
+    }
+    @keyframes loginFadeIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .login-card .logo-area {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-card .logo-area .logo-mark {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      color: white;
+      font-weight: 800;
+      font-size: 24px;
+    }
+    .login-card .logo-area h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .login-card .logo-area p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-top: 6px;
+    }
+    .login-tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .login-tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .login-tab.active {
+      background: white;
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      background: #f8fafc;
+      transition: all var(--transition);
+      outline: none;
+    }
+    .form-group input:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+      background: white;
+    }
+    .form-group input::placeholder { color: var(--text-muted); }
+    .login-card .btn-primary {
+      width: 100%;
+      justify-content: center;
+      padding: 14px;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    /* ===== Stats Card (Dashboard) ===== */
+    .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      border: 1px solid rgba(226,232,240,0.6);
+      transition: all var(--transition);
+      cursor: default;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    .stat-card .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .stat-card .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .stat-card .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .stat-card .stat-change {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* ===== Radar Chart Container ===== */
+    .radar-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    .radar-container canvas {
+      max-width: 380px;
+      max-height: 280px;
+    }
+
+    /* ===== Weak Area List ===== */
+    .weak-list { list-style: none; }
+    .weak-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .weak-item:last-child { border-bottom: none; }
+    .weak-item .weak-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .weak-item .weak-info { flex: 1; }
+    .weak-item .weak-name {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .weak-item .weak-domain {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .weak-item .weak-score {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ===== Notes ===== */
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .note-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid rgba(226,232,240,0.6);
+      padding: 20px;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .note-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+    .note-card .note-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: white;
+    }
+    .note-card .note-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .note-card .note-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .note-card .note-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .note-card .note-tags .tag {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Upload Area ===== */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 60px 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      background: #fafbfc;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--primary-light);
+      background: rgba(99,102,241,0.04);
+    }
+    .upload-area i {
+      font-size: 48px;
+      color: var(--primary-light);
+      margin-bottom: 16px;
+    }
+    .upload-area h4 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .upload-area p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* ===== Review Center ===== */
+    .review-modes {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .review-mode-btn {
+      padding: 8px 20px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .review-mode-btn:hover {
+      border-color: var(--primary-light);
+      color: var(--primary);
+    }
+    .review-mode-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+    }
+    .question-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid rgba(226,232,240,0.6);
+      padding: 28px;
+      max-width: 680px;
+    }
+    .question-card .q-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .question-card .q-text {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .q-options { display: flex; flex-direction: column; gap: 10px; }
+    .q-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all var(--transition);
+      font-size: 15px;
+    }
+    .q-option:hover { border-color: var(--primary-light); background: rgba(99,102,241,0.03); }
+    .q-option .q-option-letter {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+    .q-option:hover .q-option-letter {
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+    }
+    .q-option.correct {
+      border-color: #22c55e;
+      background: #f0fdf4;
+    }
+    .q-option.correct .q-option-letter {
+      background: #22c55e;
+      color: white;
+    }
+    .q-option.wrong {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+    .q-option.wrong .q-option-letter {
+      background: #ef4444;
+      color: white;
+    }
+    .q-explanation {
+      margin-top: 16px;
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border-left: 3px solid var(--primary);
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+    .q-explanation.show { display: block; }
+
+    /* ===== Open Answer ===== */
+    .open-answer-area { display: none; }
+    .open-answer-area.active { display: block; }
+    .open-answer-area textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: all var(--transition);
+    }
+    .open-answer-area textarea:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .open-answer-area .btn { margin-top: 12px; }
+
+    /* ===== Report ===== */
+    .report-header {
+      text-align: center;
+      padding: 32px 0;
+    }
+    .report-header .big-score {
+      font-size: 64px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .report-header .score-label {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ===== Settings ===== */
+    .settings-section {
+      margin-bottom: 28px;
+    }
+    .settings-section h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+    }
+    .setting-row .setting-label {
+      font-size: 14px;
+    }
+    .setting-row .setting-label p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ===== Toggle ===== */
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: #cbd5e1;
+      border-radius: 12px;
+      cursor: pointer;
+      position: relative;
+      transition: background var(--transition);
+    }
+    .toggle.on { background: var(--primary); }
+    .toggle .toggle-knob {
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform var(--transition);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle.on .toggle-knob { transform: translateX(20px); }
+
+    /* ===== Range Slider ===== */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 160px;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(99,102,241,0.3);
+    }
+
+    /* ===== Loading shimmer ===== */
+    .shimmer {
+      background: linear-gradient(90deg, #f0f2f5 25%, #e2e8f0 50%, #f0f2f5 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ===== Toast ===== */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--text);
+      color: white;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-xl);
+      animation: toastIn 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+    }
+    .empty-state i {
+      font-size: 48px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .empty-state h4 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1024px) {
+      .stat-cards { grid-template-columns: repeat(2, 1fr); }
+      .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { width: 56px; }
+      .nav-item { width: 40px; height: 40px; font-size: 17px; border-radius: 10px; }
+      .main { margin-left: 56px; }
+      .topbar { padding: 16px 20px; }
+      .page-container { padding: 12px 20px 24px; }
+      .topbar-right .search-box { display: none; }
+      .stat-cards { grid-template-columns: 1fr 1fr; }
+      .login-form-panel { padding: 28px 24px; }
+      .report-header .big-score { font-size: 42px; }
+    }
+    @media (max-width: 900px) {
+      .login-split { flex-direction: column; max-width: 420px; }
+      .login-showcase { display: none; }
+      .login-form-panel { width: 100%; border-radius: 24px; padding: 36px 32px; }
+    }
+    @media (max-width: 480px) {
+      .stat-cards { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Animations ===== */
+    .fade-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .slide-up { animation: slideUp 0.5s ease; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+    /* ===== AI Analysis Status ===== */
+    .ai-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .ai-status.analyzing {
+      background: #fef9c3;
+      color: #854d0e;
+    }
+    .ai-status.analyzing .dot {
+      width: 8px; height: 8px;
+      background: #eab308;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    .ai-status.completed {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    /* ===== Note Detail ===== */
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .detail-header .detail-info { flex: 1; }
+    .detail-header .detail-info h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .detail-header .detail-info .detail-meta { display: flex; gap: 16px; color: var(--text-muted); font-size: 13px; }
+    .knowledge-list { display: flex; flex-direction: column; gap: 8px; }
+    .knowledge-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border-left: 3px solid var(--primary-light);
+      transition: all var(--transition);
+    }
+    .knowledge-item:hover {
+      background: #f1f5f9;
+    }
+    .knowledge-item .kp-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .knowledge-item .kp-content { flex: 1; }
+    .knowledge-item .kp-name { font-size: 14px; font-weight: 600; }
+    .knowledge-item .kp-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* ===== Trend Chart Container ===== */
+    .chart-container {
+      position: relative;
+      height: 220px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div class="login-page" id="loginPage">
+  <div class="login-bg-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+  </div>
+  <div class="login-card">
+    <div class="logo-area">
+      <div class="logo-mark">栩</div>
+      <h2>欢迎回到栩格</h2>
+      <p>把你的知识管起来，让遗忘有据可查</p>
+    </div>
+    <div class="login-tabs">
+      <div class="login-tab active" data-tab="login">登录</div>
+      <div class="login-tab" data-tab="register">注册</div>
+    </div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" placeholder="your@email.com" value="demo@xuge.ai" />
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" placeholder="输入密码" value="123456" />
+      </div>
+      <button class="btn btn-primary" onclick="showMainApp()">
+        <i class="fas fa-arrow-right"></i> 进入栩格
+      </button>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="form-group">
+        <label>昵称</label>
+        <input type="text" placeholder="你的名字" />
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" placeholder="至少6位" />
+      </div>
+      <button class="btn btn-primary" onclick="showMainApp()">
+        <i class="fas fa-user-plus"></i> 注册并进入
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar" id="sidebar" style="display:none;">
+  <div class="sidebar-logo" onclick="navigateTo('dashboard')" title="栩格">
+    <i class="fas fa-feather-alt"></i>
+  </div>
+  <div class="nav-items">
+    <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+      <i class="fas fa-th-large"></i>
+      <span class="tooltip">工作台</span>
+    </a>
+    <a class="nav-item" data-page="notes" onclick="navigateTo('notes')">
+      <i class="fas fa-book"></i>
+      <span class="tooltip">笔记</span>
+    </a>
+    <a class="nav-item" data-page="upload" onclick="navigateTo('upload')">
+      <i class="fas fa-cloud-upload-alt"></i>
+      <span class="tooltip">上传</span>
+    </a>
+    <a class="nav-item" data-page="review" onclick="navigateTo('review')">
+      <i class="fas fa-brain"></i>
+      <span class="tooltip">复习</span>
+    </a>
+    <a class="nav-item" data-page="report" onclick="navigateTo('report')">
+      <i class="fas fa-chart-pie"></i>
+      <span class="tooltip">报告</span>
+    </a>
+    <a class="nav-item" data-page="settings" onclick="navigateTo('settings')">
+      <i class="fas fa-cog"></i>
+      <span class="tooltip">设置</span>
+    </a>
+  </div>
+  <div class="sidebar-bottom">
+    <a class="nav-item" onclick="showLogin()">
+      <i class="fas fa-sign-out-alt"></i>
+      <span class="tooltip">退出</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main" id="mainContent" style="display:none;">
+  
+  <!-- Top Bar -->
+  <div class="topbar" id="topbar">
+    <div class="topbar-left">
+      <h1 id="pageTitle">工作台</h1>
+      <span class="page-subtitle" id="pageSubtitle">今日概览</span>
+    </div>
+    <div class="topbar-right">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="搜索笔记、知识点…" />
+      </div>
+      <div class="topbar-avatar" title="用户设置">许</div>
+    </div>
+  </div>
+
+  <div class="page-container">
+
+    <!-- ===== PAGE: DASHBOARD ===== -->
+    <div class="page active" id="page-dashboard">
+      <!-- Stat Cards -->
+      <div class="stat-cards">
+        <div class="stat-card" style="--delay:0s">
+          <div class="stat-icon" style="background:rgba(99,102,241,0.1);color:var(--primary);">
+            <i class="fas fa-book-open"></i>
+          </div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">笔记总数</div>
+          <div class="stat-change" style="color:#22c55e;">
+            <i class="fas fa-arrow-up"></i> +3 本周
+          </div>
+        </div>
+        <div class="stat-card" style="--delay:0.05s">
+          <div class="stat-icon" style="background:rgba(20,184,166,0.1);color:var(--secondary);">
+            <i class="fas fa-lightbulb"></i>
+          </div>
+          <div class="stat-value">86</div>
+          <div class="stat-label">知识点</div>
+          <div class="stat-change" style="color:#22c55e;">
+            <i class="fas fa-arrow-up"></i> +12 本周
+          </div>
+        </div>
+        <div class="stat-card" style="--delay:0.1s">
+          <div class="stat-icon" style="background:rgba(234,179,8,0.1);color:#ca8a04;">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-value">347</div>
+          <div class="stat-label">复习题完成</div>
+          <div class="stat-change" style="color:#22c55e;">
+            <i class="fas fa-arrow-up"></i> +28 本周
+          </div>
+        </div>
+        <div class="stat-card" style="--delay:0.15s">
+          <div class="stat-icon" style="background:rgba(239,68,68,0.1);color:#ef4444;">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="stat-value">3</div>
+          <div class="stat-label">薄弱领域</div>
+          <div class="stat-change" style="color:#ef4444;">
+            <i class="fas fa-exclamation-circle"></i> 需要关注
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Area -->
+      <div class="grid-2-1">
+        <div>
+          <!-- Radar Chart -->
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3><i class="fas fa-chart-pie" style="color:var(--primary);margin-right:8px;"></i>知识全景图</h3>
+              <span class="badge badge-blue">今日更新</span>
+            </div>
+            <div class="card-body">
+              <div class="radar-container">
+                <canvas id="radarChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart & Progress Row -->
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="fas fa-tasks" style="color:var(--secondary);margin-right:8px;"></i>今日复习进度</h3>
+                <span class="badge badge-green">3/10 题</span>
+              </div>
+              <div class="card-body">
+                <div class="progress-bar" style="margin-bottom:12px;">
+                  <div class="progress-bar-fill" style="width:30%;"></div>
+                </div>
+                <p style="font-size:13px;color:var(--text-secondary);">
+                  今日已完成 <strong>3</strong> 题，剩余 <strong>7</strong> 题
+                </p>
+                <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="navigateTo('review')">
+                  <i class="fas fa-play"></i> 继续复习
+                </button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="fas fa-chart-line" style="color:var(--accent);margin-right:8px;"></i>掌握趋势</h3>
+              </div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="trendChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weak Areas Sidebar -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-exclamation-circle" style="color:#ef4444;margin-right:8px;"></i>薄弱领域</h3>
+            <span class="badge badge-red">3 项</span>
+          </div>
+          <div class="card-body">
+            <ul class="weak-list">
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#ef4444;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">经济学</div>
+                  <div class="weak-domain">知识点：边际效应递减、凯恩斯主义</div>
+                </div>
+                <div class="weak-score" style="color:#ef4444;">32%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#eab308;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">计算机科学</div>
+                  <div class="weak-domain">知识点：二叉树遍历、动态规划</div>
+                </div>
+                <div class="weak-score" style="color:#eab308;">54%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#eab308;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">管理学</div>
+                  <div class="weak-domain">知识点：SWOT 分析、波特五力</div>
+                </div>
+                <div class="weak-score" style="color:#eab308;">61%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#22c55e;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">数据结构</div>
+                  <div class="weak-domain">知识点：数组、链表、栈与队列</div>
+                </div>
+                <div class="weak-score" style="color:#22c55e;">78%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#22c55e;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">数据库</div>
+                  <div class="weak-domain">知识点：SQL、索引、事务</div>
+                </div>
+                <div class="weak-score" style="color:#22c55e;">85%</div>
+              </li>
+            </ul>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;" onclick="navigateTo('report')">
+              <i class="fas fa-file-alt"></i> 查看完整报告
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: NOTES ===== -->
+    <div class="page" id="page-notes">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm active" style="background:var(--primary);color:white;border-color:transparent;">
+            <i class="fas fa-th"></i> 卡片
+          </button>
+          <button class="btn btn-outline btn-sm"><i class="fas fa-list"></i> 列表</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="navigateTo('upload')">
+          <i class="fas fa-plus"></i> 新建笔记
+        </button>
+      </div>
+      <div class="notes-grid">
+        <div class="note-card slide-up" style="animation-delay:0s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#6366f1,#818cf8);">
+            <i class="fas fa-chart-bar"></i>
+          </div>
+          <div class="note-title">微观经济学原理</div>
+          <div class="note-meta">
+            <span><i class="far fa-calendar"></i> 2026-06-23</span>
+            <span><i class="far fa-file-alt"></i> PDF</span>
+          </div>
+          <div class="note-tags">
+            <span class="tag">经济学</span>
+            <span class="tag">微观</span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span><i class="fas fa-lightbulb"></i> 8 个知识点</span>
+            <span class="ai-status completed">
+              <i class="fas fa-check-circle" style="font-size:10px;"></i> AI 已分析
+            </span>
+          </div>
+        </div>
+        <div class="note-card slide-up" style="animation-delay:0.05s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#14b8a6,#5eead4);">
+            <i class="fas fa-code"></i>
+          </div>
+          <div class="note-title">数据结构与算法</div>
+          <div class="note-meta">
+            <span><i class="far fa-calendar"></i> 2026-06-22</span>
+            <span><i class="far fa-file-alt"></i> Word</span>
+          </div>
+          <div class="note-tags">
+            <span class="tag">计算机</span>
+            <span class="tag">算法</span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span><i class="fas fa-lightbulb"></i> 12 个知识点</span>
+            <span class="ai-status completed">
+              <i class="fas fa-check-circle" style="font-size:10px;"></i> AI 已分析
+            </span>
+          </div>
+        </div>
+        <div class="note-card slide-up" style="animation-delay:0.1s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#a78bfa,#c4b5fd);">
+            <i class="fas fa-briefcase"></i>
+          </div>
+          <div class="note-title">管理学基础</div>
+          <div class="note-meta">
+            <span><i class="far fa-calendar"></i> 2026-06-20</span>
+            <span><i class="far fa-file-alt"></i> 文字</span>
+          </div>
+          <div class="note-tags">
+            <span class="tag">管理学</span>
+            <span class="tag">商科</span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span><i class="fas fa-lightbulb"></i> 6 个知识点</span>
+            <span class="ai-status completed">
+              <i class="fas fa-check-circle" style="font-size:10px;"></i> AI 已分析
+            </span>
+          </div>
+        </div>
+        <div class="note-card slide-up" style="animation-delay:0.15s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
+            <i class="fas fa-database"></i>
+          </div>
+          <div class="note-title">数据库系统概论</div>
+          <div class="note-meta">
+            <span><i class="far fa-calendar"></i> 2026-06-18</span>
+            <span><i class="far fa-file-alt"></i> PDF</span>
+          </div>
+          <div class="note-tags">
+            <span class="tag">数据库</span>
+            <span class="tag">计算机</span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span><i class="fas fa-lightbulb"></i> 10 个知识点</span>
+            <span class="ai-status completed">
+              <i class="fas fa-check-circle" style="font-size:10px;"></i> AI 已分析
+            </span>
+          </div>
+        </div>
+        <div class="note-card slide-up" style="animation-delay:0.2s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#ef4444,#f87171);">
+            <i class="fas fa-robot"></i>
+          </div>
+          <div class="note-title">人工智能导论</div>
+          <div class="note-meta">
+            <span><i class="far fa-calendar"></i> 2026-06-15</span>
+            <span><i class="far fa-file-alt"></i> PDF</span>
+          </div>
+          <div class="note-tags">
+            <span class="tag">AI</span>
+            <span class="tag">计算机</span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span><i class="fas fa-lightbulb"></i> 15 个知识点</span>
+            <span class="ai-status completed">
+              <i class="fas fa-check-circle" style="font-size:10px;"></i> AI 已分析
+            </span>
+          </div>
+        </div>
+        <div class="note-card slide-up" style="animation-delay:0.25s;">
+          <div class="note-icon" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);">
+            <i class="fas fa-file-upload"></i>
+          </div>
+          <div class="note-title">上传新笔记…</div>
+          <div class="note-meta">
+            <span>点击或拖拽上传</span>
+          </div>
+          <div class="note-tags" style="margin-top:8px;">
+            <span class="tag" style="background:rgba(99,102,241,0.1);color:var(--primary);">
+              <i class="fas fa-cloud-upload-alt"></i> 立即上传
+            </span>
+          </div>
+          <div class="note-meta" style="margin-top:8px;">
+            <span style="color:var(--text-muted);">支持 PDF / Word / 文字</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: UPLOAD ===== -->
+    <div class="page" id="page-upload">
+      <div class="grid-1-2">
+        <div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3><i class="fas fa-cloud-upload-alt" style="color:var(--primary);margin-right:8px;"></i>上传文件</h3>
+            </div>
+            <div class="card-body">
+              <div class="upload-area" id="uploadDropZone">
+                <i class="fas fa-file-upload"></i>
+                <h4>拖拽文件到此处</h4>
+                <p>或点击选择文件 · 支持 PDF、Word（.docx）</p>
+                <input type="file" accept=".pdf,.docx" style="display:none;" id="fileInput" />
+              </div>
+              <div style="margin-top:16px;">
+                <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('fileInput').click();">
+                  <i class="fas fa-folder-open"></i> 选择文件
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-pen" style="color:var(--secondary);margin-right:8px;"></i>直接输入文字</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>笔记标题</label>
+                <input type="text" placeholder="例如：微观经济学第三章" />
+              </div>
+              <div class="form-group">
+                <label>笔记内容</label>
+                <textarea placeholder="粘贴或输入你的笔记内容…" style="width:100%;min-height:180px;padding:14px;border:1px solid var(--border);border-radius:10px;font-family:var(--font);font-size:14px;line-height:1.7;resize:vertical;outline:none;"></textarea>
+              </div>
+              <button class="btn btn-primary">
+                <i class="fas fa-magic"></i> 提交并让 AI 分析
+              </button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-history" style="color:var(--accent);margin-right:8px;"></i>最近上传</h3>
+            </div>
+            <div class="card-body">
+              <ul class="weak-list">
+                <li class="weak-item" onclick="navigateTo('notes')" style="cursor:pointer;">
+                  <div class="weak-dot" style="background:#22c55e;width:10px;height:10px;"></div>
+                  <div class="weak-info">
+                    <div class="weak-name">微观经济学原理</div>
+                    <div class="weak-domain">完成分析 · 8 个知识点</div>
+                  </div>
+                  <span class="badge badge-green"><i class="fas fa-check"></i> 完成</span>
+                </li>
+                <li class="weak-item" onclick="navigateTo('notes')" style="cursor:pointer;">
+                  <div class="weak-dot" style="background:#22c55e;width:10px;height:10px;"></div>
+                  <div class="weak-info">
+                    <div class="weak-name">数据结构与算法</div>
+                    <div class="weak-domain">完成分析 · 12 个知识点</div>
+                  </div>
+                  <span class="badge badge-green"><i class="fas fa-check"></i> 完成</span>
+                </li>
+                <li class="weak-item" style="cursor:pointer;">
+                  <div class="weak-dot" style="background:#eab308;width:10px;height:10px;"></div>
+                  <div class="weak-info">
+                    <div class="weak-name">机器学习笔记</div>
+                    <div class="weak-domain">正在分析中…</div>
+                  </div>
+                  <span class="ai-status analyzing">
+                    <span class="dot"></span> 分析中
+                  </span>
+                </li>
+              </ul>
+              <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px;" onclick="navigateTo('notes')">
+                查看全部笔记 <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Note Detail Preview -->
+          <div class="card" style="margin-top:20px;">
+            <div class="card-header">
+              <h3><i class="fas fa-file-alt" style="color:var(--primary);margin-right:8px;"></i>笔记详情预览</h3>
+            </div>
+            <div class="card-body">
+              <div class="detail-header">
+                <div class="detail-info">
+                  <h2>微观经济学原理</h2>
+                  <div class="detail-meta">
+                    <span><i class="far fa-calendar"></i> 2026-06-23</span>
+                    <span><i class="far fa-file-pdf"></i> PDF · 24 页</span>
+                    <span><i class="fas fa-tag"></i> 经济学</span>
+                  </div>
+                </div>
+                <span class="ai-status completed">
+                  <i class="fas fa-check-circle"></i> AI 分析完成
+                </span>
+              </div>
+              <div style="margin-bottom:16px;">
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;color:var(--text-secondary);">AI 摘要</h4>
+                <p style="font-size:14px;line-height:1.7;color:var(--text-secondary);background:#f8fafc;padding:14px;border-radius:10px;">
+                  本文介绍了微观经济学的基本概念，包括供需关系、边际效应、弹性、市场结构等核心理论。通过图表分析了完全竞争市场与垄断市场的差异，以及价格机制在资源配置中的作用。
+                </p>
+              </div>
+              <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-secondary);">AI 提取知识点</h4>
+              <div class="knowledge-list">
+                <div class="knowledge-item">
+                  <div class="kp-icon"><i class="fas fa-lightbulb"></i></div>
+                  <div class="kp-content">
+                    <div class="kp-name">供需关系</div>
+                    <div class="kp-desc">价格由供给与需求的平衡决定</div>
+                  </div>
+                </div>
+                <div class="knowledge-item">
+                  <div class="kp-icon"><i class="fas fa-lightbulb"></i></div>
+                  <div class="kp-content">
+                    <div class="kp-name">边际效应递减</div>
+                    <div class="kp-desc">每增加一单位消费，额外满足感逐渐减少</div>
+                  </div>
+                </div>
+                <div class="knowledge-item">
+                  <div class="kp-icon"><i class="fas fa-lightbulb"></i></div>
+                  <div class="kp-content">
+                    <div class="kp-name">需求弹性</div>
+                    <div class="kp-desc">价格变化对需求量的影响程度</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: REVIEW ===== -->
+    <div class="page" id="page-review">
+      <div class="review-modes">
+        <button class="review-mode-btn active" data-mode="choice" onclick="switchReviewMode('choice')">
+          <i class="fas fa-list"></i> 选择题
+        </button>
+        <button class="review-mode-btn" data-mode="open" onclick="switchReviewMode('open')">
+          <i class="fas fa-pen"></i> 开放问答
+        </button>
+        <button class="review-mode-btn" data-mode="scenario" onclick="switchReviewMode('scenario')">
+          <i class="fas fa-theater-masks"></i> 情景应用
+        </button>
+        <button class="review-mode-btn" data-mode="voice" onclick="switchReviewMode('voice')">
+          <i class="fas fa-microphone"></i> 语音对话
+        </button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text-muted);"><i class="fas fa-layer-group"></i> 经济学</span>
+          <span style="font-size:13px;color:var(--text-muted);"><i class="fas fa-flag"></i> 第 3/10 题</span>
+        </div>
+      </div>
+
+      <!-- Choice Mode -->
+      <div class="question-card" id="choiceMode">
+        <div class="q-meta">
+          <span class="badge badge-blue">选择题</span>
+          <span><i class="fas fa-lightbulb"></i> 边际效应递减</span>
+        </div>
+        <div class="q-text">
+          以下哪项最能解释"为什么第三块披萨带来的满足感不如第一块"？
+        </div>
+        <div class="q-options">
+          <div class="q-option" onclick="selectOption(this, 'A')">
+            <span class="q-option-letter">A</span>
+            边际效应递减
+          </div>
+          <div class="q-option" onclick="selectOption(this, 'B')">
+            <span class="q-option-letter">B</span>
+            机会成本
+          </div>
+          <div class="q-option" onclick="selectOption(this, 'C')">
+            <span class="q-option-letter">C</span>
+            供需关系
+          </div>
+          <div class="q-option" onclick="selectOption(this, 'D')">
+            <span class="q-option-letter">D</span>
+            沉没成本
+          </div>
+        </div>
+        <div class="q-explanation show" id="qExplanation">
+          <strong>✅ 正确！</strong><br />
+          边际效应递减（Diminishing Marginal Utility）指的是随着消费量的增加，每新增一单位消费带来的额外满足感逐渐减少。第一块披萨最解饿，所以满足感最高；到第三块时已经快饱了，满足感自然降低。
+        </div>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-secondary"><i class="fas fa-undo"></i> 重做</button>
+          <button class="btn btn-primary" onclick="showToast('已进入下一题')"><i class="fas fa-arrow-right"></i> 下一题</button>
+        </div>
+      </div>
+
+      <!-- Open Answer Mode -->
+      <div class="question-card" id="openMode" style="display:none;">
+        <div class="q-meta">
+          <span class="badge badge-purple">开放问答</span>
+          <span><i class="fas fa-lightbulb"></i> 凯恩斯主义</span>
+        </div>
+        <div class="q-text">
+          请简述凯恩斯主义的核心观点。
+        </div>
+        <div class="open-answer-area active">
+          <textarea placeholder="在此输入你的回答…">凯恩斯主义主张政府干预经济，通过财政政策和货币政策刺激需求。</textarea>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="toggleExplanation(this)">
+              <i class="fas fa-paper-plane"></i> 提交答案
+            </button>
+            <button class="btn btn-outline"><i class="fas fa-undo"></i> 重写</button>
+          </div>
+          <div class="q-explanation show" style="margin-top:16px;">
+            <strong>评分：75 分（良好）</strong><br />
+            你的答案提到了政府干预的核心观点，但遗漏了"有效需求不足"这一关键前提。<br /><br />
+            <strong>标准答案：</strong>凯恩斯主义的核心观点是：经济可能长期处于有效需求不足的状态，因此需要政府通过财政政策和货币政策进行干预。<br /><br />
+            <strong>遗漏要点：</strong>有效需求不足、流动性陷阱
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario Mode -->
+      <div class="question-card" id="scenarioMode" style="display:none;">
+        <div class="q-meta">
+          <span class="badge badge-yellow">情景应用</span>
+          <span><i class="fas fa-lightbulb"></i> 机会成本</span>
+        </div>
+        <div class="q-text">
+          你开了一家奶茶店，生意不错。现在你有 10 万元闲钱，可以选择：<br />
+          A. 开第二家分店<br />
+          B. 投资朋友开的火锅店<br />
+          C. 存银行拿 3% 利息<br /><br />
+          如果你选择了开分店，请问你的机会成本是什么？
+        </div>
+        <div class="open-answer-area active">
+          <textarea placeholder="说说你的分析…"></textarea>
+          <button class="btn btn-primary"><i class="fas fa-paper-plane"></i> 提交分析</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn btn-outline btn-sm"><i class="fas fa-lightbulb"></i> 查看提示</button>
+          <button class="btn btn-secondary btn-sm" onclick="navigateTo('review')"><i class="fas fa-arrow-right"></i> 下一题</button>
+        </div>
+      </div>
+
+      <!-- Voice Mode -->
+      <div class="question-card" id="voiceMode" style="display:none;">
+        <div class="q-meta">
+          <span class="badge badge-green">语音对话</span>
+          <span><i class="fas fa-lightbulb"></i> 供需关系</span>
+        </div>
+        <div class="q-text" style="text-align:center;padding:20px 0;">
+          <div style="font-size:16px;color:var(--text-muted);margin-bottom:16px;">点击下方按钮开始答题</div>
+          <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;margin:0 auto 20px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,0.3);transition:all var(--transition);" 
+               onmouseover="this.style.transform='scale(1.06)'" onmouseout="this.style.transform='scale(1)'">
+            <i class="fas fa-microphone" style="font-size:32px;color:white;"></i>
+          </div>
+          <p style="font-size:14px;color:var(--text-secondary);">
+            点击麦克风图标，说出你的答案<br />
+            AI 将自动识别并评分
+          </p>
+          <div style="margin-top:20px;display:flex;gap:8px;justify-content:center;">
+            <div style="width:12px;height:12px;border-radius:50%;background:#e2e8f0;animation:pulse 1.5s infinite;"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#e2e8f0;animation:pulse 1.5s infinite;animation-delay:0.2s;"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#e2e8f0;animation:pulse 1.5s infinite;animation-delay:0.4s;"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-secondary" onclick="showToast('🎤 语音识别已启动，请说话…')">
+            <i class="fas fa-play"></i> 开始录制
+          </button>
+          <button class="btn btn-outline"><i class="fas fa-keyboard"></i> 改为打字</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: REPORT ===== -->
+    <div class="page" id="page-report">
+      <div class="report-header">
+        <div class="big-score">72</div>
+        <div class="score-label">综合掌握度评分</div>
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:12px;">
+          <span class="badge badge-green"><i class="fas fa-arrow-up"></i> +5% 较上周</span>
+          <span class="badge badge-blue">347 题完成</span>
+        </div>
+      </div>
+
+      <div class="grid-2-1" style="margin-bottom:20px;">
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-chart-pie" style="color:var(--primary);margin-right:8px;"></i>各领域掌握度</h3>
+            </div>
+            <div class="card-body">
+              <div class="radar-container">
+                <canvas id="reportRadarChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-tasks" style="color:#ef4444;margin-right:8px;"></i>薄弱知识点</h3>
+            <span class="badge badge-red">3 项需加强</span>
+          </div>
+          <div class="card-body">
+            <ul class="weak-list">
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#ef4444;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">边际效应递减</div>
+                  <div class="weak-domain">经济学</div>
+                </div>
+                <div class="weak-score" style="color:#ef4444;">30%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#ef4444;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">凯恩斯主义</div>
+                  <div class="weak-domain">经济学</div>
+                </div>
+                <div class="weak-score" style="color:#ef4444;">45%</div>
+              </li>
+              <li class="weak-item">
+                <div class="weak-dot" style="background:#eab308;"></div>
+                <div class="weak-info">
+                  <div class="weak-name">二叉树遍历</div>
+                  <div class="weak-domain">计算机科学</div>
+                </div>
+                <div class="weak-score" style="color:#eab308;">50%</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-chart-line" style="color:var(--secondary);margin-right:8px;"></i>掌握趋势</h3>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:200px;">
+              <canvas id="reportTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fas fa-bookmark" style="color:#ef4444;margin-right:8px;"></i>错题本</h3>
+            <span class="badge badge-red">12 道错题</span>
+          </div>
+          <div class="card-body">
+            <ul class="weak-list">
+              <li class="weak-item" style="cursor:pointer;">
+                <div class="weak-info">
+                  <div class="weak-name">机会成本的定义</div>
+                  <div class="weak-domain">经济学 · 答错 3 次</div>
+                </div>
+                <button class="btn btn-outline btn-sm"><i class="fas fa-redo"></i> 重做</button>
+              </li>
+              <li class="weak-item" style="cursor:pointer;">
+                <div class="weak-info">
+                  <div class="weak-name">二叉树的前序遍历</div>
+                  <div class="weak-domain">计算机 · 答错 2 次</div>
+                </div>
+                <button class="btn btn-outline btn-sm"><i class="fas fa-redo"></i> 重做</button>
+              </li>
+              <li class="weak-item" style="cursor:pointer;">
+                <div class="weak-info">
+                  <div class="weak-name">SWOT 分析四要素</div>
+                  <div class="weak-domain">管理学 · 答错 2 次</div>
+                </div>
+                <button class="btn btn-outline btn-sm"><i class="fas fa-redo"></i> 重做</button>
+              </li>
+            </ul>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;">
+              <i class="fas fa-redo-alt"></i> 重新做全部错题
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE: SETTINGS ===== -->
+    <div class="page" id="page-settings">
+      <div class="grid-2">
+        <div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3><i class="fas fa-user" style="color:var(--primary);margin-right:8px;"></i>个人资料</h3>
+            </div>
+            <div class="card-body">
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+                <div class="topbar-avatar" style="width:56px;height:56px;font-size:22px;border-radius:14px;">许</div>
+                <div>
+                  <div style="font-weight:600;">许李</div>
+                  <div style="font-size:13px;color:var(--text-muted);">demo@xuge.ai</div>
+                </div>
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;">更换头像</button>
+              </div>
+              <div class="form-group">
+                <label>昵称</label>
+                <input type="text" value="许李" />
+              </div>
+              <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" value="demo@xuge.ai" />
+              </div>
+              <button class="btn btn-primary btn-sm">保存修改</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-bell" style="color:var(--secondary);margin-right:8px;"></i>通知设置</h3>
+            </div>
+            <div class="card-body">
+              <div class="setting-row">
+                <div class="setting-label">
+                  每日复习提醒
+                  <p>每天固定时间提醒你完成复习</p>
+                </div>
+                <div class="toggle on" onclick="toggleSwitch(this)">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label">
+                  薄弱领域提醒
+                  <p>当某领域掌握度显著下降时通知</p>
+                </div>
+                <div class="toggle on" onclick="toggleSwitch(this)">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+              <div class="setting-row" style="border-bottom:none;">
+                <div class="setting-label">
+                  邮件报告
+                  <p>每周日发送掌握度周报</p>
+                </div>
+                <div class="toggle" onclick="toggleSwitch(this)">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3><i class="fas fa-sliders-h" style="color:var(--accent);margin-right:8px;"></i>复习偏好</h3>
+            </div>
+            <div class="card-body">
+              <div class="setting-row">
+                <div class="setting-label">
+                  每日题量
+                  <p>每天自动生成的题目数量</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <input type="range" min="5" max="30" value="10" oninput="this.nextElementSibling.textContent=this.value" />
+                  <span style="font-weight:600;min-width:24px;">10</span>
+                </div>
+              </div>
+              <div class="setting-row">
+                <div class="setting-label">
+                  优先出题领域
+                  <p>薄弱知识点优先</p>
+                </div>
+                <div class="toggle on" onclick="toggleSwitch(this)">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+              <div class="setting-row" style="border-bottom:none;">
+                <div class="setting-label">
+                  复习提醒时间
+                </div>
+                <select style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:14px;background:white;outline:none;">
+                  <option>晚上 20:00</option>
+                  <option selected>早上 08:00</option>
+                  <option>中午 12:30</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fas fa-download" style="color:var(--primary);margin-right:8px;"></i>数据管理</h3>
+            </div>
+            <div class="card-body">
+              <div class="setting-row" style="border-bottom:none;flex-direction:column;align-items:flex-start;gap:12px;">
+                <div class="setting-label">
+                  导出学习数据
+                  <p>导出你的掌握度报告和错题本</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <button class="btn btn-outline btn-sm"><i class="fas fa-file-pdf"></i> 导出 PDF 报告</button>
+                  <button class="btn btn-outline btn-sm"><i class="fas fa-file-excel"></i> 导出 Excel</button>
+                  <button class="btn btn-outline btn-sm" style="color:#ef4444;border-color:#ef4444;">
+                    <i class="fas fa-trash-alt"></i> 清除所有数据
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:20px;background:linear-gradient(135deg,rgba(99,102,241,0.03),rgba(20,184,166,0.03));border-color:rgba(99,102,241,0.15);">
+            <div class="card-body" style="text-align:center;">
+              <p style="font-size:13px;color:var(--text-muted);">
+                <i class="fas fa-feather-alt" style="color:var(--primary);"></i> 栩格 v1.0 · 把你的知识管起来，让遗忘有据可查
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===== Navigation =====
+function navigateTo(page) {
+  // Hide all pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  // Show target page
+  document.getElementById('page-' + page).classList.add('active');
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+  // Update topbar title
+  const titles = {
+    dashboard: ['工作台', '今日概览'],
+    notes: ['笔记', '共 12 篇笔记'],
+    upload: ['上传笔记', 'PDF / Word / 文字'],
+    review: ['复习中心', '今日目标 10 题'],
+    report: ['报告中心', '综合掌握度 72%'],
+    settings: ['设置', '个性化配置']
+  };
+  const [title, sub] = titles[page] || ['页面', ''];
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('pageSubtitle').textContent = sub;
+  // Scroll top
+  document.querySelector('.main').scrollTop = 0;
+  // Re-render charts if needed
+  setTimeout(() => {
+    if (page === 'dashboard') initDashboardCharts();
+    if (page === 'report') initReportCharts();
+  }, 100);
+}
+
+// ===== Review Mode Switch =====
+function switchReviewMode(mode) {
+  document.querySelectorAll('.review-mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.review-mode-btn[data-mode="${mode}"]`).classList.add('active');
+  document.getElementById('choiceMode').style.display = mode === 'choice' ? 'block' : 'none';
+  document.getElementById('openMode').style.display = mode === 'open' ? 'block' : 'none';
+  document.getElementById('scenarioMode').style.display = mode === 'scenario' ? 'block' : 'none';
+  document.getElementById('voiceMode').style.display = mode === 'voice' ? 'block' : 'none';
+}
+
+// ===== Select Option (Review) =====
+function selectOption(el, letter) {
+  const parent = el.closest('.q-options');
+  const options = parent.querySelectorAll('.q-option');
+  // Disable all
+  options.forEach(o => {
+    o.style.pointerEvents = 'none';
+    if (o === el && letter === 'A') {
+      o.classList.add('correct');
+    } else if (letter !== 'A' && o === el) {
+      o.classList.add('wrong');
+      // Show correct
+      options[0].classList.add('correct');
+    }
+  });
+  // Show explanation
+  parent.parentElement.querySelector('.q-explanation').classList.add('show');
+}
+
+// ===== Toggle Explanation (Open Answer) =====
+function toggleExplanation(btn) {
+  const expl = btn.closest('.open-answer-area').querySelector('.q-explanation');
+  if (expl) expl.classList.toggle('show');
+}
+
+// ===== Toggle Switch =====
+function toggleSwitch(el) {
+  el.classList.toggle('on');
+}
+
+// ===== Login / Logout =====
+function showMainApp() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'block';
+  setTimeout(() => {
+    initDashboardCharts();
+  }, 200);
+}
+
+function showLogin() {
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'none';
+}
+
+// ===== Login Tabs =====
+document.querySelectorAll('.login-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    const isLogin = this.dataset.tab === 'login';
+    document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+  });
+});
+
+// ===== Upload Dropzone =====
+const dropZone = document.getElementById('uploadDropZone');
+const fileInput = document.getElementById('fileInput');
+if (dropZone) {
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    showToast('📄 文件已上传，AI 分析中…');
+  });
+}
+if (fileInput) {
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      showToast('📄 ' + fileInput.files[0].name + ' 已上传，AI 分析中…');
+    }
+  });
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = msg;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(12px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ===== Charts =====
+let radarChartInstance = null;
+let trendChartInstance = null;
+let reportRadarInstance = null;
+let reportTrendInstance = null;
+
+function initDashboardCharts() {
+  initRadarChart();
+  initTrendChart();
+}
+
+function initReportCharts() {
+  initReportRadar();
+  initReportTrend();
+}
+
+function initRadarChart() {
+  const canvas = document.getElementById('radarChart');
+  if (!canvas) return;
+  if (radarChartInstance) { radarChartInstance.destroy(); }
+  const ctx = canvas.getContext('2d');
+  radarChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['经济学', '计算机', '管理学', '数据结构', '数据库', 'AI'],
+      datasets: [{
+        label: '当前掌握度',
+        data: [32, 54, 61, 78, 85, 45],
+        backgroundColor: 'rgba(99,102,241,0.12)',
+        borderColor: '#6366f1',
+        borderWidth: 2,
+        pointBackgroundColor: '#6366f1',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }, {
+        label: '一周前',
+        data: [28, 48, 58, 72, 80, 40],
+        backgroundColor: 'rgba(20,184,166,0.08)',
+        borderColor: '#14b8a6',
+        borderWidth: 1.5,
+        borderDash: [5, 5],
+        pointBackgroundColor: '#14b8a6',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Inter', size: 11 }, usePointStyle: true, padding: 16 }
+        }
+      },
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          ticks: { stepSize: 20, font: { size: 10 }, backdropColor: 'transparent' },
+          pointLabels: { font: { family: 'Inter', size: 12, weight: '500' } },
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          angleLines: { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    }
+  });
+}
+
+function initTrendChart() {
+  const canvas = document.getElementById('trendChart');
+  if (!canvas) return;
+  if (trendChartInstance) { trendChartInstance.destroy(); }
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+  gradient.addColorStop(0, 'rgba(99,102,241,0.25)');
+  gradient.addColorStop(1, 'rgba(99,102,241,0)');
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['6/17', '6/18', '6/19', '6/20', '6/21', '6/22', '6/23'],
+      datasets: [{
+        label: '综合掌握度',
+        data: [58, 60, 62, 59, 65, 68, 72],
+        borderColor: '#6366f1',
+        backgroundColor: gradient,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#6366f1',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#94a3b8' }
+        },
+        y: {
+          min: 30,
+          max: 100,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 10 }, color: '#94a3b8' }
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    }
+  });
+}
+
+function initReportRadar() {
+  const canvas = document.getElementById('reportRadarChart');
+  if (!canvas) return;
+  if (reportRadarInstance) { reportRadarInstance.destroy(); }
+  const ctx = canvas.getContext('2d');
+  reportRadarInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['经济学', '计算机', '管理学', '数据结构', '数据库', 'AI'],
+      datasets: [{
+        label: '当前掌握度',
+        data: [32, 54, 61, 78, 85, 45],
+        backgroundColor: 'rgba(99,102,241,0.12)',
+        borderColor: '#6366f1',
+        borderWidth: 2,
+        pointBackgroundColor: '#6366f1',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Inter', size: 11 }, usePointStyle: true, padding: 16 }
+        }
+      },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 20, font: { size: 10 }, backdropColor: 'transparent' },
+          pointLabels: { font: { family: 'Inter', size: 12, weight: '500' } },
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          angleLines: { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    }
+  });
+}
+
+function initReportTrend() {
+  const canvas = document.getElementById('reportTrendChart');
+  if (!canvas) return;
+  if (reportTrendInstance) { reportTrendInstance.destroy(); }
+  const ctx = canvas.getContext('2d');
+  const g1 = ctx.createLinearGradient(0, 0, 0, 160);
+  g1.addColorStop(0, 'rgba(99,102,241,0.25)');
+  g1.addColorStop(1, 'rgba(99,102,241,0)');
+  const g2 = ctx.createLinearGradient(0, 0, 0, 160);
+  g2.addColorStop(0, 'rgba(20,184,166,0.2)');
+  g2.addColorStop(1, 'rgba(20,184,166,0)');
+  reportTrendInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['6/17', '6/18', '6/19', '6/20', '6/21', '6/22', '6/23'],
+      datasets: [
+        {
+          label: '经济学',
+          data: [20, 22, 25, 24, 28, 30, 32],
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 3
+        },
+        {
+          label: '计算机',
+          data: [40, 42, 45, 48, 50, 52, 54],
+          borderColor: '#eab308',
+          backgroundColor: 'rgba(234,179,8,0.08)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 3
+        },
+        {
+          label: '综合',
+          data: [58, 60, 62, 59, 65, 68, 72],
+          borderColor: '#6366f1',
+          backgroundColor: g1,
+          borderWidth: 3,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: '#6366f1',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Inter', size: 10 }, usePointStyle: true, padding: 12 }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8' } },
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 9 }, color: '#94a3b8' }
+        }
+      }
+    }
+  });
+}
+
+// ===== Sidebar Hover Tooltip Delay =====
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('mouseenter', function() {
+    const tooltip = this.querySelector('.tooltip');
+    if (tooltip) {
+      setTimeout(() => { tooltip.style.opacity = '1'; }, 200);
+    }
+  });
+  item.addEventListener('mouseleave', function() {
+    const tooltip = this.querySelector('.tooltip');
+    if (tooltip) { tooltip.style.opacity = '0'; }
+  });
+});
+
+// ===== Enterprise: stat card stagger animation =====
+document.addEventListener('DOMContentLoaded', () => {
+  // Stagger animation for stat cards
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.stat-card').forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    card.style.transition = `all 0.5s ease ${card.style.getPropertyValue('--delay') || '0s'}`;
+    observer.observe(card);
+  });
+});
+
+console.log('🖋️ 栩格 — AI 知识体检与复习助手');
+console.log('「把你的知识管起来，让遗忘有据可查」');
+</script>
+</body>
+</html>
