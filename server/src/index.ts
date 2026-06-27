@@ -85,5 +85,6 @@ async function initAdminAccount() {
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📎 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔧 Build: v2`);
   await initAdminAccount();
 });
