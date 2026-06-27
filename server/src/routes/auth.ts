@@ -5,10 +5,14 @@ import { hashPassword, verifyPassword, signToken } from '../lib/auth.js';
 
 const router = Router();
 
-// 登录：支持手机号或邮箱
+// 登录：支持手机号或邮箱（兼容旧版前端用 email 字段）
 const loginSchema = z.object({
-  account: z.string().min(1, '请输入手机号或邮箱'),
+  account: z.string().min(1, '请输入手机号或邮箱').optional(),
+  email: z.string().optional(),
   password: z.string().min(1, '请输入密码'),
+}).refine((data) => data.account || data.email, {
+  message: '请输入手机号或邮箱',
+  path: ['account'],
 });
 
 // 注册：手机号必填，邮箱和昵称可选
@@ -81,12 +85,15 @@ router.post('/login', async (req, res) => {
   try {
     const data = loginSchema.parse(req.body);
 
+    // 兼容旧版前端：优先用 account，否则用 email
+    const account = data.account || data.email || '';
+
     // 判断是手机号还是邮箱
-    const isEmail = data.account.includes('@');
+    const isEmail = account.includes('@');
 
     const user = isEmail
-      ? await prisma.user.findUnique({ where: { email: data.account } })
-      : await prisma.user.findUnique({ where: { phone: data.account } });
+      ? await prisma.user.findUnique({ where: { email: account } })
+      : await prisma.user.findUnique({ where: { phone: account } });
 
     if (!user || !verifyPassword(data.password, user.password)) {
       res.status(401).json({ message: '账号或密码错误' });
