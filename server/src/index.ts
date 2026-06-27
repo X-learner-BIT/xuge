@@ -15,9 +15,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS: 允许前端域名（开发时允许 localhost）
+// CORS: 允许前端域名（开发时允许 localhost，生产环境兼容 GitHub Pages 子路径）
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL || ''].filter(Boolean)
+  ? [
+      process.env.FRONTEND_URL || '',
+      'https://x-learner-bit.github.io',
+      'https://x-learner-bit.github.io/xuge',
+    ].filter(Boolean)
   : ['http://localhost:5173', 'http://localhost:5174'];
 
 app.use(cors({
