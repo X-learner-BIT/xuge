@@ -25,6 +25,7 @@ const registerSchema = z.object({
 });
 
 router.post('/register', async (req, res) => {
+  console.log('[REGISTER] request body:', JSON.stringify(req.body));
   try {
     const data = registerSchema.parse(req.body);
 
@@ -72,16 +73,18 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('[REGISTER] zod error:', JSON.stringify(error.errors));
       const firstError = error.errors[0];
       res.status(400).json({ message: firstError?.message || '输入格式错误' });
       return;
     }
-    console.error(error);
+    console.error('[REGISTER] unexpected error:', error);
     res.status(500).json({ message: '注册失败' });
   }
 });
 
 router.post('/login', async (req, res) => {
+  console.log('[LOGIN] request body:', JSON.stringify(req.body));
   try {
     const data = loginSchema.parse(req.body);
 
@@ -114,11 +117,12 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('[LOGIN] zod error:', JSON.stringify(error.errors));
       const firstError = error.errors[0];
       res.status(400).json({ message: firstError?.message || '输入格式错误' });
       return;
     }
-    console.error(error);
+    console.error('[LOGIN] unexpected error:', error);
     res.status(500).json({ message: '登录失败' });
   }
 });
