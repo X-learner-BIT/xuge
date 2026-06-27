@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "cd server && npm install && npx prisma generate && (npx tsc || true) && echo build-v2",
+    "build": "cd server && npm install && npx prisma generate && (npx tsc || true)",
     "start": "cd server && npm start"
   },
   "engines": {

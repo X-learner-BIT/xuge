@@ -1,0 +1,4 @@
+# Cache bust file for Railway
+# Modified: 2026-06-27
+# Purpose: Force Railway Nixpacks to invalidate build cache
+CACHE_BUST=3
