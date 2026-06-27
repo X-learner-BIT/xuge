@@ -62,11 +62,17 @@ router.post('/submit', authMiddleware, async (req: AuthRequest, res) => {
     const { questionId, userAnswer } = req.body;
     const question = await prisma.question.findUnique({
       where: { id: questionId },
-      include: { knowledgePoint: true },
+      include: { knowledgePoint: { include: { note: true } } },
     });
 
     if (!question) {
       res.status(404).json({ message: '题目不存在' });
+      return;
+    }
+
+    // 校验题目是否属于当前用户（通过知识点 -> 笔记 -> 用户）
+    if (question.knowledgePoint.note.userId !== req.userId) {
+      res.status(403).json({ message: '无权访问该题目' });
       return;
     }
 
