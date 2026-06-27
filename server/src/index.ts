@@ -55,6 +55,8 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ message: '服务器内部错误' });
 });
 
+// Railway deploy trigger
+
 // 初始化默认 admin 账号
 async function initAdminAccount() {
   try {
