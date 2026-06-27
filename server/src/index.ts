@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { prisma } from './lib/prisma.js';
+import { hashPassword } from './lib/auth.js';
 import authRoutes from './routes/auth.js';
 import notesRoutes from './routes/notes.js';
 import reviewRoutes from './routes/review.js';
@@ -49,7 +51,33 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ message: '服务器内部错误' });
 });
 
-app.listen(PORT, () => {
+// 初始化默认 admin 账号
+async function initAdminAccount() {
+  try {
+    const adminPhone = 'admin';
+    const adminPassword = '1234';
+
+    const existing = await prisma.user.findUnique({ where: { phone: adminPhone } });
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          phone: adminPhone,
+          password: hashPassword(adminPassword),
+          nickname: '管理员',
+          role: 'admin',
+        },
+      });
+      console.log('✅ 默认管理员账号已创建: admin / 1234');
+    } else {
+      console.log('ℹ️ 管理员账号已存在');
+    }
+  } catch (err) {
+    console.error('创建管理员账号失败:', err);
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📎 Environment: ${process.env.NODE_ENV || 'development'}`);
+  await initAdminAccount();
 });

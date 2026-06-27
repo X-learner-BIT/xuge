@@ -41,7 +41,7 @@ export function AppLayout() {
               />
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-primary-light to-accent text-sm font-semibold text-white transition-transform duration-300 hover:scale-105 cursor-pointer">
-              {user?.nickname?.[0] || user?.email?.[0] || 'U'}
+              {user?.nickname?.[0] || user?.phone?.[0] || user?.email?.[0] || 'U'}
             </div>
           </div>
         </div>

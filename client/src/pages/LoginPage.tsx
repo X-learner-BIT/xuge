@@ -1,24 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Feather, ArrowRight, UserPlus } from 'lucide-react';
+import { Feather, ArrowRight, UserPlus, Phone, Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, register, loading } = useAuth();
+  const { login, register, loading, error } = useAuth();
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
-  const [email, setEmail] = useState('demo@xuge.ai');
-  const [password, setPassword] = useState('123456');
+  // 登录字段
+  const [loginAccount, setLoginAccount] = useState('admin');
+  const [loginPassword, setLoginPassword] = useState('1234');
+
+  // 注册字段
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (tab === 'login') {
-      const ok = await login({ email, password });
+      const ok = await login({ account: loginAccount, password: loginPassword });
       if (ok) navigate('/dashboard');
     } else {
-      const ok = await register({ email, password, nickname });
+      if (password !== confirmPassword) {
+        alert('两次输入的密码不一致');
+        return;
+      }
+      const ok = await register({ phone, password, confirmPassword, nickname, email });
       if (ok) navigate('/dashboard');
     }
   };
@@ -71,47 +82,133 @@ export function LoginPage() {
             </button>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {tab === 'register' && (
-              <div>
-                <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-                  昵称
-                </label>
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="你的名字"
-                  className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
-                />
-              </div>
+            {tab === 'login' ? (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    手机号 / 邮箱
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={loginAccount}
+                      onChange={(e) => setLoginAccount(e.target.value)}
+                      placeholder="手机号或邮箱"
+                      required
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">默认账号: admin / 1234</p>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    密码
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="请输入密码"
+                      required
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    手机号 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="请输入手机号"
+                      required
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    昵称
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder="你的名字"
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    邮箱（可选）
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    密码 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="至少4位"
+                      required
+                      minLength={4}
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+                    确认密码 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="再次输入密码"
+                      required
+                      className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+                    />
+                  </div>
+                </div>
+              </>
             )}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-                邮箱
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-                密码
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="至少6位"
-                required
-                className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
-              />
-            </div>
 
             <button
               type="submit"

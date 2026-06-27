@@ -1,20 +1,24 @@
 // === 用户 ===
 export interface User {
   id: string;
-  email: string;
+  phone?: string | null;
+  email?: string | null;
   nickname: string | null;
+  role?: string;
   createdAt: string;
 }
 
 export interface LoginDto {
-  email: string;
+  account: string;
   password: string;
 }
 
 export interface RegisterDto {
-  email: string;
+  phone: string;
   password: string;
+  confirmPassword: string;
   nickname?: string;
+  email?: string;
 }
 
 export interface AuthResponse {

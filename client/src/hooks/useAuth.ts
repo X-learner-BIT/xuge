@@ -15,16 +15,10 @@ export function useAuth() {
       const res = await authApi.login(data);
       setAuth(res.token, res.user);
       return true;
-    } catch {
-      // Demo mode fallback when backend is unavailable
-      const demoUser = {
-        id: 'demo',
-        email: data.email,
-        nickname: data.email.split('@')[0],
-        createdAt: new Date().toISOString(),
-      };
-      setAuth('demo-token', demoUser);
-      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.message || '登录失败，请检查网络';
+      setError(msg);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -37,16 +31,10 @@ export function useAuth() {
       const res = await authApi.register(data);
       setAuth(res.token, res.user);
       return true;
-    } catch {
-      // Demo mode fallback when backend is unavailable
-      const demoUser = {
-        id: 'demo',
-        email: data.email,
-        nickname: data.nickname || data.email.split('@')[0],
-        createdAt: new Date().toISOString(),
-      };
-      setAuth('demo-token', demoUser);
-      return true;
+    } catch (err: any) {
+      const msg = err.response?.data?.message || '注册失败，请检查网络';
+      setError(msg);
+      return false;
     } finally {
       setLoading(false);
     }

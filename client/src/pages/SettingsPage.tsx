@@ -34,11 +34,11 @@ export function SettingsPage() {
           </h3>
           <div className="mb-5 flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-accent text-xl font-semibold text-white">
-              {user?.nickname?.[0] || user?.email?.[0] || 'U'}
+              {user?.nickname?.[0] || user?.phone?.[0] || user?.email?.[0] || 'U'}
             </div>
             <div>
               <div className="font-semibold">{user?.nickname || '用户'}</div>
-              <div className="text-[13px] text-text-muted">{user?.email}</div>
+              <div className="text-[13px] text-text-muted">{user?.phone || user?.email || '未绑定'}</div>
             </div>
             <button className="ml-auto rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary-light hover:text-primary">
               更换头像

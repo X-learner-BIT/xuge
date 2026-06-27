@@ -11,10 +11,10 @@ export function verifyPassword(password: string, hash: string): boolean {
   return bcrypt.compareSync(password, hash);
 }
 
-export function signToken(payload: { userId: string; email: string }): string {
+export function signToken(payload: { userId: string; phone?: string | null; email?: string | null }): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-export function verifyToken(token: string): { userId: string; email: string } {
-  return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+export function verifyToken(token: string): { userId: string; phone?: string | null; email?: string | null } {
+  return jwt.verify(token, JWT_SECRET) as { userId: string; phone?: string | null; email?: string | null };
 }
