@@ -3,7 +3,7 @@ import { verifyToken } from '../lib/auth.js';
 
 export interface AuthRequest extends Request {
   userId?: string;
-  userEmail?: string;
+  userEmail?: string | null;
 }
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
