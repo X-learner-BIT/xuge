@@ -424,9 +424,12 @@ router.post('/text', authMiddleware, async (req: AuthRequest, res) => {
 // 重新分析笔记
 router.post('/:id/reanalyze', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const note = await prisma.note.findFirst({
-      where: { id: req.params.id as string, userId: req.userId },
-    });
+    const currentUser = await prisma.user.findUnique({ where: { id: req.userId } });
+    const where: any = { id: req.params.id as string };
+    if (currentUser?.role !== 'admin') {
+      where.userId = req.userId;
+    }
+    const note = await prisma.note.findFirst({ where });
     if (!note) {
       res.status(404).json({ message: '笔记不存在' });
       return;
@@ -441,15 +444,23 @@ router.post('/:id/reanalyze', authMiddleware, async (req: AuthRequest, res) => {
     let images: Buffer[] = [];
     let isScannedPdf = false;
     if (note.filePath && (note.contentType === 'pdf' || note.contentType === 'docx')) {
-      const extracted = await extractContent(note.filePath, note.contentType);
-      text = extracted.text;
-      images = extracted.images;
-      isScannedPdf = extracted.isScannedPdf;
-      // 更新数据库中的文本内容
-      await prisma.note.update({
-        where: { id: note.id },
-        data: { content: text },
-      });
+      try {
+        const extracted = await extractContent(note.filePath, note.contentType);
+        text = extracted.text;
+        images = extracted.images;
+        isScannedPdf = extracted.isScannedPdf;
+        // 更新数据库中的文本内容
+        await prisma.note.update({
+          where: { id: note.id },
+          data: { content: text },
+        });
+      } catch (extractErr: any) {
+        console.warn(`[Reanalyze] File re-extraction failed for ${note.filePath}, using cached content:`, extractErr?.message || extractErr);
+        // 文件读取失败时，回退使用数据库中已保存的内容继续分析
+        text = note.content || '';
+        images = [];
+        isScannedPdf = false;
+      }
     }
 
     // 先重置状态并删除旧数据
@@ -477,7 +488,8 @@ router.post('/:id/reanalyze', authMiddleware, async (req: AuthRequest, res) => {
       });
       // 同步更新管理员副本
       await syncAdminNote(note.id, note.title, note.contentType, text, note.filePath, result.summary, result.tags, result.knowledgePoints);
-    }).catch(async () => {
+    }).catch(async (err) => {
+      console.error('[Reanalyze] Analysis failed:', err);
       await prisma.note.update({
         where: { id: note.id },
         data: { status: 'failed' },
@@ -485,9 +497,9 @@ router.post('/:id/reanalyze', authMiddleware, async (req: AuthRequest, res) => {
     });
 
     res.json({ success: true, message: '重新分析已触发' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: '重新分析失败' });
+  } catch (error: any) {
+    console.error('[Reanalyze] Error:', error);
+    res.status(500).json({ message: '重新分析失败', detail: error?.message || String(error) });
   }
 });
 
