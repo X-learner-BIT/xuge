@@ -10,6 +10,7 @@ import notesRoutes from './routes/notes.js';
 import reviewRoutes from './routes/review.js';
 import statsRoutes from './routes/stats.js';
 import adminRoutes from './routes/admin.js';
+import { cleanupAdminDuplicates } from './routes/notes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,4 +101,6 @@ app.listen(PORT, async () => {
   console.log(`📎 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔧 Build: v2`);
   await initAdminAccount();
+  // 启动时清理管理员账户中的重复笔记
+  await cleanupAdminDuplicates();
 });

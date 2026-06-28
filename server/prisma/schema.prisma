@@ -33,6 +33,7 @@ model Note {
   tags        Json     @default("[]")
   status      String   @default("analyzing") // analyzing, completed, failed
   syncedFrom  String?  // 记录原始上传者 userId（管理员同步笔记时标记来源）
+  originalNoteId String? // 原始笔记ID（用于管理员同步去重）
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

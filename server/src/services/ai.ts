@@ -531,7 +531,7 @@ function heuristicAnalyze(content: string): {
   }
 
   const summary = cleaned.slice(0, 200) + (cleaned.length > 200 ? '…' : '');
-  const allDomains = points.flatMap((p) => guessDomains(p.description));
+  const allDomains = points.flatMap((p) => guessDomains(p.description || ''));
   const tags = Array.from(new Set(allDomains)).slice(0, 5);
   if (tags.length === 0) tags.push('通用');
 

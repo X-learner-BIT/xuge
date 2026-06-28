@@ -31,16 +31,131 @@ async function getAdminUser() {
 }
 
 // 判断管理员是否已有相同内容的笔记（基于标题+内容前200字去重）
-async function isDuplicateForAdmin(adminId: string, title: string, content: string): Promise<boolean> {
+async function isDuplicateForAdmin(adminId: string, originalNoteId: string, title: string, content: string): Promise<boolean> {
+  // 优先通过 originalNoteId 精确去重（最可靠）
+  const exactMatch = await prisma.note.findFirst({
+    where: {
+      userId: adminId,
+      originalNoteId,
+    },
+  });
+  if (exactMatch) return true;
+
+  // 兜底：通过 title + content 前200字模糊去重
   const contentPreview = content.slice(0, 200);
-  const existing = await prisma.note.findFirst({
+  const fuzzyMatch = await prisma.note.findFirst({
     where: {
       userId: adminId,
       title,
       content: { startsWith: contentPreview },
     },
   });
-  return !!existing;
+  return !!fuzzyMatch;
+}
+
+// 同步更新管理员副本（重新分析时调用）
+async function syncAdminNote(
+  originalNoteId: string,
+  title: string,
+  contentType: string,
+  content: string | null,
+  filePath: string | null,
+  summary: string | null,
+  tags: string[],
+  knowledgePoints: any[]
+) {
+  const admin = await getAdminUser();
+  if (!admin) return;
+
+  // 查找管理员是否已有该笔记的副本
+  const adminNote = await prisma.note.findFirst({
+    where: {
+      userId: admin.id,
+      originalNoteId,
+    },
+  });
+
+  if (adminNote) {
+    // 更新已有副本
+    await prisma.note.update({
+      where: { id: adminNote.id },
+      data: {
+        title,
+        contentType,
+        content,
+        filePath,
+        aiSummary: summary,
+        tags,
+        status: 'completed',
+      },
+    });
+    // 删除旧知识点，创建新知识点
+    await prisma.knowledgePoint.deleteMany({ where: { noteId: adminNote.id } });
+    if (knowledgePoints.length > 0) {
+      await prisma.knowledgePoint.createMany({
+        data: knowledgePoints.map((kp) => ({
+          name: kp.name,
+          description: kp.description,
+          domain: kp.domain,
+          mastery: kp.mastery,
+          noteId: adminNote.id,
+        })),
+      });
+    }
+    console.log(`[Admin Sync] Updated note "${title}" for admin`);
+  }
+  // 如果没有副本，不自动创建（避免重新分析时意外创建）
+}
+
+// 启动时清理管理员账户中的重复笔记
+async function cleanupAdminDuplicates() {
+  try {
+    const admin = await getAdminUser();
+    if (!admin) return;
+
+    // 找出管理员所有没有 originalNoteId 的笔记（旧数据），按 title+content 去重
+    const adminNotes = await prisma.note.findMany({
+      where: { userId: admin.id },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const seen = new Map<string, string>(); // key: title+content前200字 -> noteId
+    const duplicates: string[] = [];
+
+    for (const note of adminNotes) {
+      if (note.originalNoteId) {
+        // 有 originalNoteId 的笔记，检查是否重复
+        const key = `orig:${note.originalNoteId}`;
+        if (seen.has(key)) {
+          duplicates.push(note.id);
+        } else {
+          seen.set(key, note.id);
+        }
+      } else {
+        // 没有 originalNoteId 的旧数据，用 title+content 去重
+        const contentPreview = (note.content || '').slice(0, 200);
+        const key = `${note.title}||${contentPreview}`;
+        if (seen.has(key)) {
+          duplicates.push(note.id);
+        } else {
+          seen.set(key, note.id);
+        }
+      }
+    }
+
+    if (duplicates.length > 0) {
+      // 删除重复笔记及其知识点
+      await prisma.knowledgePoint.deleteMany({
+        where: { noteId: { in: duplicates } },
+      });
+      await prisma.note.deleteMany({
+        where: { id: { in: duplicates } },
+      });
+      console.log(`[Admin Cleanup] Removed ${duplicates.length} duplicate notes for admin`);
+    }
+  } catch (err) {
+    console.error('[Admin Cleanup] Failed:', err);
+  }
 }
 
 // 将笔记复制给管理员（去重）
@@ -58,8 +173,8 @@ async function copyNoteToAdmin(
   const admin = await getAdminUser();
   if (!admin || admin.id === userId) return; // 没有管理员或是管理员自己上传，不复制
 
-  // 去重：管理员已有相同标题+相同内容开头的笔记，不再存储
-  if (content && await isDuplicateForAdmin(admin.id, title, content)) {
+  // 去重：管理员已有相同笔记，不再存储
+  if (content && await isDuplicateForAdmin(admin.id, originalNoteId, title, content)) {
     console.log(`[Admin Dedup] Skipped duplicate note "${title}" for admin`);
     return;
   }
@@ -75,6 +190,7 @@ async function copyNoteToAdmin(
       status: 'completed',
       userId: admin.id,
       syncedFrom: userId, // 标记来源：从哪个用户同步过来的
+      originalNoteId,     // 保存原始笔记ID，用于精确去重
     },
   });
 
@@ -359,6 +475,8 @@ router.post('/:id/reanalyze', authMiddleware, async (req: AuthRequest, res) => {
           noteId: note.id,
         })),
       });
+      // 同步更新管理员副本
+      await syncAdminNote(note.id, note.title, note.contentType, text, note.filePath, result.summary, result.tags, result.knowledgePoints);
     }).catch(async () => {
       await prisma.note.update({
         where: { id: note.id },
@@ -430,4 +548,5 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+export { cleanupAdminDuplicates };
 export default router;

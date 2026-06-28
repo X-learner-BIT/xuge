@@ -178,7 +178,7 @@ router.put('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
 });
 
 // 修改用户角色
-router.put('/users/:id/role', authMiddleware, adminMiddleware, async (req, res) => {
+router.put('/users/:id/role', authMiddleware, adminMiddleware, async (req: AuthRequest, res) => {
   try {
     const userId = req.params.id as string;
     const { role } = req.body;
