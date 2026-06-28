@@ -25,6 +25,7 @@ export const reviewApi = {
     count: number;
     questionType: 'choice' | 'fill';
     noteIds: string[];
+    creativeMode?: boolean;
   }) =>
     api
       .post<{ questions: ChoiceQuestion[] }>('/review/generate', params)

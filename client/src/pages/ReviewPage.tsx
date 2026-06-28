@@ -45,6 +45,7 @@ export function ReviewPage() {
   const [customCount, setCustomCount] = useState<string>('5');
   const [useCustomCount, setUseCustomCount] = useState(false);
   const [showNoteSelector, setShowNoteSelector] = useState(false);
+  const [creativeMode, setCreativeMode] = useState(false);
 
   // 答题状态（提升到页面级别，避免组件复用导致状态错乱）
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -93,6 +94,7 @@ export function ReviewPage() {
       count,
       questionType: reviewMode,
       noteIds: selectedNoteIds,
+      creativeMode,
     });
 
     if (generated.length > 0) {
@@ -224,6 +226,32 @@ export function ReviewPage() {
               </button>
             </div>
           </div>
+
+          {/* 出题模式开关（仅选择题模式显示） */}
+          {reviewMode === 'choice' && (
+            <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-secondary">出题模式</h3>
+                  <p className="mt-0.5 text-xs text-text-muted">
+                    {creativeMode ? '灵活巧妙，结合实际场景' : '直接围绕知识点出题，含单选/多选'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCreativeMode((v) => !v)}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                    creativeMode ? 'bg-primary' : 'bg-slate-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      creativeMode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 笔记选择 */}
           <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">

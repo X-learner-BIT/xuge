@@ -88,21 +88,47 @@ function ChoiceQuestionCard({
   onSubmitAll,
 }: Props) {
   const isReviewing = phase === 'reviewing';
+  // 判断是否为多选题：correctAnswer 包含逗号
+  const isMultiSelect = question.correctAnswer.includes(',');
+
+  // 多选题：解析当前已选中的字母集合
+  const selectedLetters = userAnswer
+    ? userAnswer.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const toggleLetter = (letter: string) => {
+    if (isReviewing) return;
+    if (isMultiSelect) {
+      const exists = selectedLetters.includes(letter);
+      const newSelected = exists
+        ? selectedLetters.filter((l) => l !== letter)
+        : [...selectedLetters, letter];
+      // 按字母顺序排序
+      newSelected.sort();
+      onAnswerChange(newSelected.join(','));
+    } else {
+      onAnswerChange(letter);
+    }
+  };
 
   const getOptionClass = (letter: string) => {
     const base =
       'flex items-center gap-3 rounded-xl border px-4 py-3.5 text-[15px] transition-all duration-300';
 
     if (!isReviewing) {
-      return `${base} border-border hover:border-primary-light hover:bg-primary/[0.03] cursor-pointer`;
+      const isSelected = selectedLetters.includes(letter);
+      return `${base} ${isSelected ? 'border-primary bg-primary/[0.03]' : 'border-border hover:border-primary-light hover:bg-primary/[0.03]'} cursor-pointer`;
     }
 
     // 查看结果阶段
     if (result) {
-      if (letter === result.correctAnswer) {
+      const correctLetters = result.correctAnswer.split(',').map((s) => s.trim());
+      const isCorrect = correctLetters.includes(letter);
+      const isUserSelected = selectedLetters.includes(letter);
+      if (isCorrect) {
         return `${base} border-green-500 bg-green-50`;
       }
-      if (letter === userAnswer && letter !== result.correctAnswer) {
+      if (isUserSelected && !isCorrect) {
         return `${base} border-red-500 bg-red-50`;
       }
       return `${base} border-border opacity-50`;
@@ -115,15 +141,18 @@ function ChoiceQuestionCard({
       'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold transition-all duration-300';
 
     if (!isReviewing) {
-      const isSelected = letter === userAnswer;
+      const isSelected = selectedLetters.includes(letter);
       return `${base} ${isSelected ? 'bg-primary text-white' : 'bg-slate-100 text-text-secondary group-hover:bg-primary/10 group-hover:text-primary'}`;
     }
 
     if (result) {
-      if (letter === result.correctAnswer) {
+      const correctLetters = result.correctAnswer.split(',').map((s) => s.trim());
+      const isCorrect = correctLetters.includes(letter);
+      const isUserSelected = selectedLetters.includes(letter);
+      if (isCorrect) {
         return `${base} bg-green-500 text-white`;
       }
-      if (letter === userAnswer && letter !== result.correctAnswer) {
+      if (isUserSelected && !isCorrect) {
         return `${base} bg-red-500 text-white`;
       }
       return `${base} bg-slate-100 text-text-secondary`;
@@ -135,7 +164,7 @@ function ChoiceQuestionCard({
     <div className="mx-auto max-w-[680px] rounded-2xl border border-border/60 bg-bg-card p-7 shadow-card">
       <div className="mb-3 flex items-center gap-3 text-[13px] text-text-muted">
         <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
-          选择题
+          {isMultiSelect ? '多选题' : '单选题'}
         </span>
         <span className="flex items-center gap-1">
           <LightbulbMini /> {question.knowledgePoint}
@@ -151,7 +180,7 @@ function ChoiceQuestionCard({
             <button
               key={letter}
               disabled={isReviewing}
-              onClick={() => onAnswerChange(letter)}
+              onClick={() => toggleLetter(letter)}
               className={`group ${getOptionClass(letter)} text-left`}
             >
               <span className={getLetterClass(letter)}>{letter}</span>

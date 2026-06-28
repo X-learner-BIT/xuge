@@ -11,6 +11,7 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const count = Math.min(Number(req.body.count) || 5, 20);
     const questionType = req.body.questionType === 'fill' ? 'fill' : 'choice';
+    const creativeMode = req.body.creativeMode === true;
     const noteIds: string[] = Array.isArray(req.body.noteIds) ? req.body.noteIds : [];
 
     // 构建查询条件：如果传了 noteIds，则只查询这些笔记的知识点
@@ -32,7 +33,7 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res) => {
       return;
     }
 
-    const questions = await generateQuestions(knowledgePoints, count, questionType);
+    const questions = await generateQuestions(knowledgePoints, count, questionType, creativeMode);
 
     // 保存题目到数据库
     const created = await prisma.$transaction(
@@ -88,7 +89,10 @@ router.post('/submit', authMiddleware, async (req: AuthRequest, res) => {
       return;
     }
 
-    const isCorrect = userAnswer === question.correctAnswer;
+    // 支持多选题：将答案按字母排序后比较（如 "C,A" 和 "A,C" 视为相同）
+    const normalizeAnswer = (ans: string) =>
+      ans.split(/[,，]/).map((s) => s.trim()).filter(Boolean).sort().join(',');
+    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(question.correctAnswer);
 
     // 记录答题
     await prisma.reviewRecord.create({

@@ -18,6 +18,7 @@ export function useReview() {
     count: number;
     questionType: 'choice' | 'fill';
     noteIds: string[];
+    creativeMode?: boolean;
   }) => {
     setLoading(true);
     try {
