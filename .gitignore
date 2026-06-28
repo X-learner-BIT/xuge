@@ -35,3 +35,11 @@ pnpm-debug.log*
 
 # Prisma
 prisma/migrations/*/migration_lock.toml
+
+# Sensitive files
+server/历史密钥备份.md
+
+# Test files
+*.pdf
+*.docx
+*.doc

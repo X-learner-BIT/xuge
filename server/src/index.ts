@@ -8,6 +8,8 @@ import { hashPassword } from './lib/auth.js';
 import authRoutes from './routes/auth.js';
 import notesRoutes from './routes/notes.js';
 import reviewRoutes from './routes/review.js';
+import statsRoutes from './routes/stats.js';
+import adminRoutes from './routes/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +42,8 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/review', reviewRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 静态文件（上传的文件）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -60,8 +64,8 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 // 初始化默认 admin 账号
 async function initAdminAccount() {
   try {
-    const adminPhone = 'admin';
-    const adminPassword = '1234';
+    const adminPhone = '18962574183';
+    const adminPassword = 'xl040207';
 
     const existing = await prisma.user.findUnique({ where: { phone: adminPhone } });
     if (!existing) {
@@ -73,8 +77,12 @@ async function initAdminAccount() {
           role: 'admin',
         },
       });
-      console.log('✅ 默认管理员账号已创建: admin / 1234');
+      console.log('✅ 默认管理员账号已创建: 18962574183 / xl040207');
     } else {
+      // 确保已有账号 role 为 admin
+      if (existing.role !== 'admin') {
+        await prisma.user.update({ where: { id: existing.id }, data: { role: 'admin' } });
+      }
       console.log('ℹ️ 管理员账号已存在');
     }
   } catch (err) {

@@ -6,6 +6,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   setAuth: (token: string, user: User) => void;
+  updateUser: (user: User) => void;
   logout: () => void;
   restore: () => void;
 }
@@ -18,6 +19,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('xuge_token', token);
     localStorage.setItem('xuge_user', JSON.stringify(user));
     set({ token, user, isAuthenticated: true });
+  },
+  updateUser: (user) => {
+    localStorage.setItem('xuge_user', JSON.stringify(user));
+    set({ user });
   },
   logout: () => {
     localStorage.removeItem('xuge_token');

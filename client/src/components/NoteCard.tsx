@@ -38,15 +38,18 @@ export function NoteCard({ note, onClick }: Props) {
         </span>
         <span>{contentTypeIcon[note.contentType] || note.contentType}</span>
       </div>
-      {note.tags.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {note.tags.map((tag) => (
-            <span key={tag} className="rounded-md bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-text-secondary">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const tags = Array.isArray(note.tags) ? note.tags : [];
+        return tags.length > 0 ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span key={tag} className="rounded-md bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-text-secondary">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null;
+      })()}
       <div className="mt-2 flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs text-text-muted">
           <Lightbulb className="h-3 w-3" />

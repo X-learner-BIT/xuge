@@ -1,4 +1,5 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Search } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -10,12 +11,27 @@ const pageTitles: Record<string, [string, string]> = {
   '/review': ['复习中心', '今日目标 10 题'],
   '/report': ['报告中心', '综合掌握度'],
   '/settings': ['设置', '个性化配置'],
+  '/admin': ['管理中心', '用户与数据管理'],
 };
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [title, subtitle] = pageTitles[location.pathname] || ['页面', ''];
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    if (location.pathname === '/notes') {
+      // 如果已经在笔记页面，刷新 URL 参数即可（由 NotesListPage 监听）
+      navigate(`/notes?search=${encodeURIComponent(q)}`, { replace: true });
+    } else {
+      navigate(`/notes?search=${encodeURIComponent(q)}`);
+    }
+    setSearchQuery('');
+  };
 
   return (
     <div className="flex min-h-screen bg-bg font-sans text-text-primary">
@@ -36,6 +52,9 @@ export function AppLayout() {
               <Search className="h-3.5 w-3.5 text-text-muted" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="搜索笔记、知识点…"
                 className="ml-2 w-[200px] border-none bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
               />

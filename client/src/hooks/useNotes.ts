@@ -7,7 +7,7 @@ export function useNotes() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotes = useCallback(async (params?: { search?: string; domain?: string }) => {
+  const fetchNotes = useCallback(async (params?: { search?: string; domain?: string; source?: string }) => {
     setLoading(true);
     try {
       const data = await notesApi.getNotes(params);
@@ -27,8 +27,9 @@ export function useNotes() {
       setError(null);
       return data;
     } catch (err: any) {
-      setError(err.response?.data?.message || '上传失败');
-      return null;
+      const msg = err.response?.data?.message || err.message || '上传失败';
+      setError(msg);
+      throw new Error(msg);
     } finally {
       setLoading(false);
     }
@@ -58,9 +59,32 @@ export function useNotes() {
     }
   }, []);
 
+  const updateNote = useCallback(async (id: string, data: { title?: string; content?: string }) => {
+    try {
+      const updated = await notesApi.updateNote(id, data);
+      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
+      setError(null);
+      return updated;
+    } catch (err: any) {
+      setError(err.response?.data?.message || '更新失败');
+      return null;
+    }
+  }, []);
+
+  const reanalyzeNote = useCallback(async (id: string) => {
+    try {
+      const data = await notesApi.reanalyzeNote(id);
+      setError(null);
+      return data;
+    } catch (err: any) {
+      setError(err.response?.data?.message || '重新分析失败');
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotes();
   }, [fetchNotes]);
 
-  return { notes, loading, error, fetchNotes, uploadFile, createTextNote, deleteNote };
+  return { notes, loading, error, fetchNotes, uploadFile, createTextNote, deleteNote, updateNote, reanalyzeNote };
 }

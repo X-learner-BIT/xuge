@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -9,73 +9,78 @@ import {
   CloudUpload,
   Brain,
 } from 'lucide-react';
-import { RadarChartComponent } from '@/components/RadarChart';
+import { KnowledgeMap } from '@/components/KnowledgeMap';
 import { ProgressBar } from '@/components/ProgressBar';
 import { useReview } from '@/hooks/useReview';
-
-const statCards = [
-  {
-    icon: BookOpen,
-    value: '12',
-    label: '笔记总数',
-    change: '+3 本周',
-    changeColor: 'text-green-600',
-    iconBg: 'bg-primary/10',
-    iconColor: 'text-primary',
-  },
-  {
-    icon: Lightbulb,
-    value: '86',
-    label: '知识点',
-    change: '+12 本周',
-    changeColor: 'text-green-600',
-    iconBg: 'bg-secondary/10',
-    iconColor: 'text-secondary',
-  },
-  {
-    icon: CheckCircle,
-    value: '347',
-    label: '复习题完成',
-    change: '+28 本周',
-    changeColor: 'text-green-600',
-    iconBg: 'bg-yellow-500/10',
-    iconColor: 'text-yellow-600',
-  },
-  {
-    icon: AlertTriangle,
-    value: '3',
-    label: '薄弱领域',
-    change: '需要关注',
-    changeColor: 'text-red-500',
-    iconBg: 'bg-red-500/10',
-    iconColor: 'text-red-500',
-  },
-];
-
-const radarData = [
-  { domain: '经济学', current: 32, previous: 28 },
-  { domain: '计算机', current: 54, previous: 48 },
-  { domain: '管理学', current: 61, previous: 58 },
-  { domain: '数据结构', current: 78, previous: 72 },
-  { domain: '数据库', current: 85, previous: 80 },
-  { domain: 'AI', current: 45, previous: 40 },
-];
-
-const weakAreas = [
-  { name: '经济学', points: '边际效应递减、凯恩斯主义', score: 32, color: 'bg-red-500', textColor: 'text-red-500' },
-  { name: '计算机科学', points: '二叉树遍历、动态规划', score: 54, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-  { name: '管理学', points: 'SWOT 分析、波特五力', score: 61, color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-  { name: '数据结构', points: '数组、链表、栈与队列', score: 78, color: 'bg-green-500', textColor: 'text-green-600' },
-  { name: '数据库', points: 'SQL、索引、事务', score: 85, color: 'bg-green-500', textColor: 'text-green-600' },
-];
+import { useStats } from '@/hooks/useStats';
+import { useNotes } from '@/hooks/useNotes';
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { fetchDomainMastery } = useReview();
+  const { stats, loading: statsLoading } = useStats();
+  const { notes } = useNotes();
+  const { domainMastery, trends, fetchDomainMastery, fetchTrends } = useReview();
+  const [selectedNoteId, setSelectedNoteId] = useState('');
 
   useEffect(() => {
-    fetchDomainMastery();
-  }, [fetchDomainMastery]);
+    fetchDomainMastery(selectedNoteId || undefined);
+    fetchTrends();
+  }, [fetchDomainMastery, fetchTrends, selectedNoteId]);
+
+  const statCards = [
+    {
+      icon: BookOpen,
+      value: stats?.noteCount ?? 0,
+      label: '笔记总数',
+      change: '实时统计',
+      changeColor: 'text-green-600',
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+    },
+    {
+      icon: Lightbulb,
+      value: stats?.knowledgePointCount ?? 0,
+      label: '知识点',
+      change: '实时统计',
+      changeColor: 'text-green-600',
+      iconBg: 'bg-secondary/10',
+      iconColor: 'text-secondary',
+    },
+    {
+      icon: CheckCircle,
+      value: stats?.reviewRecordCount ?? 0,
+      label: '复习题完成',
+      change: '实时统计',
+      changeColor: 'text-green-600',
+      iconBg: 'bg-yellow-500/10',
+      iconColor: 'text-yellow-600',
+    },
+    {
+      icon: AlertTriangle,
+      value: stats?.weakDomainCount ?? 0,
+      label: '薄弱领域',
+      change: '需要关注',
+      changeColor: 'text-red-500',
+      iconBg: 'bg-red-500/10',
+      iconColor: 'text-red-500',
+    },
+  ];
+
+  const weakAreas = domainMastery
+    .filter((d) => d.mastery < 60)
+    .sort((a, b) => a.mastery - b.mastery)
+    .map((d) => ({
+      name: d.domain,
+      score: d.mastery,
+      color: d.mastery < 40 ? 'bg-red-500' : 'bg-yellow-500',
+      textColor: d.mastery < 40 ? 'text-red-500' : 'text-yellow-600',
+    }));
+
+  const todayCount = stats?.todayReviewCount ?? 0;
+  const todayTarget = 10;
+
+  const trendData = trends.length > 0 ? trends : [];
+  const maxTrend = Math.max(1, ...trendData.map((t) => t.mastery));
 
   return (
     <div className="space-y-5">
@@ -91,7 +96,9 @@ export function DashboardPage() {
             >
               <card.icon className="h-5 w-5" />
             </div>
-            <div className="text-[28px] font-bold tracking-tight">{card.value}</div>
+            <div className="text-[28px] font-bold tracking-tight">
+              {statsLoading ? '-' : card.value}
+            </div>
             <div className="mt-1 text-[13px] text-text-secondary">{card.label}</div>
             <div className={`mt-2 inline-flex items-center gap-1 text-xs font-medium ${card.changeColor}`}>
               {card.change}
@@ -102,7 +109,7 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-5">
-          {/* Radar Chart */}
+          {/* Knowledge Map */}
           <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-base font-semibold">
@@ -110,14 +117,15 @@ export function DashboardPage() {
                 知识全景图
               </h3>
               <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
-                今日更新
+                实时更新
               </span>
             </div>
-            <div className="flex justify-center">
-              <div className="w-full max-w-md">
-                <RadarChartComponent data={radarData} showPrevious />
-              </div>
-            </div>
+            <KnowledgeMap
+              domains={domainMastery}
+              notes={notes}
+              selectedNoteId={selectedNoteId}
+              onSelectNote={setSelectedNoteId}
+            />
           </div>
 
           {/* Progress & Trend Row */}
@@ -129,12 +137,12 @@ export function DashboardPage() {
                   今日复习进度
                 </h3>
                 <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-[11px] font-medium text-green-700">
-                  3/10 题
+                  {todayCount}/{todayTarget} 题
                 </span>
               </div>
-              <ProgressBar value={3} max={10} />
+              <ProgressBar value={todayCount} max={todayTarget} />
               <p className="mt-3 text-[13px] text-text-secondary">
-                今日已完成 <strong>3</strong> 题，剩余 <strong>7</strong> 题
+                今日已完成 <strong>{todayCount}</strong> 题，剩余 <strong>{Math.max(0, todayTarget - todayCount)}</strong> 题
               </p>
               <button
                 onClick={() => navigate('/review')}
@@ -149,19 +157,23 @@ export function DashboardPage() {
                 <Lightbulb className="h-5 w-5 text-accent" />
                 掌握趋势
               </h3>
-              <div className="flex h-[180px] items-end justify-between gap-2">
-                {[58, 60, 62, 59, 65, 68, 72].map((v, i) => (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                    <div
-                      className="w-full rounded-t-md bg-gradient-to-t from-primary/80 to-primary/30 transition-all duration-500"
-                      style={{ height: `${v * 1.8}px` }}
-                    />
-                    <span className="text-[10px] text-text-muted">
-                      {['6/17', '6/18', '6/19', '6/20', '6/21', '6/22', '6/23'][i]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {trendData.length > 0 ? (
+                <div className="flex h-[180px] items-end justify-between gap-2">
+                  {trendData.map((t, i) => (
+                    <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                      <div
+                        className="w-full rounded-t-md bg-gradient-to-t from-primary/80 to-primary/30 transition-all duration-500"
+                        style={{ height: `${(t.mastery / maxTrend) * 140}px` }}
+                      />
+                      <span className="text-[10px] text-text-muted">{t.date}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex h-[180px] items-center justify-center text-sm text-text-muted">
+                  暂无趋势数据
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -174,21 +186,27 @@ export function DashboardPage() {
               薄弱领域
             </h3>
             <span className="rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-medium text-red-700">
-              3 项
+              {weakAreas.length} 项
             </span>
           </div>
-          <ul className="space-y-3">
-            {weakAreas.map((area) => (
-              <li key={area.name} className="flex items-center gap-3 border-b border-slate-50 pb-3 last:border-0 last:pb-0">
-                <div className={`h-2 w-2 shrink-0 rounded-full ${area.color}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{area.name}</div>
-                  <div className="truncate text-xs text-text-muted">知识点：{area.points}</div>
-                </div>
-                <div className={`text-sm font-semibold ${area.textColor}`}>{area.score}%</div>
-              </li>
-            ))}
-          </ul>
+          {weakAreas.length > 0 ? (
+            <ul className="space-y-3">
+              {weakAreas.map((area) => (
+                <li key={area.name} className="flex items-center gap-3 border-b border-slate-50 pb-3 last:border-0 last:pb-0">
+                  <div className={`h-2 w-2 shrink-0 rounded-full ${area.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">{area.name}</div>
+                    <div className="truncate text-xs text-text-muted">掌握度较低，建议加强复习</div>
+                  </div>
+                  <div className={`text-sm font-semibold ${area.textColor}`}>{area.score}%</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="py-6 text-center text-sm text-text-muted">
+              暂无薄弱领域，继续保持！
+            </div>
+          )}
           <button
             onClick={() => navigate('/report')}
             className="mt-3 w-full rounded-xl bg-primary/5 px-4 py-2 text-sm font-semibold text-primary transition-all duration-300 hover:bg-primary/10"

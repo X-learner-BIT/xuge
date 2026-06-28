@@ -31,6 +31,7 @@ export interface Note {
   id: string;
   title: string;
   contentType: 'pdf' | 'docx' | 'text';
+  content: string | null;
   aiSummary: string | null;
   tags: string[];
   status: 'analyzing' | 'completed' | 'failed';
@@ -48,9 +49,10 @@ export interface KnowledgePoint {
   mastery: number;
 }
 
-// === 选择题 ===
+// === 复习题目 ===
 export interface ChoiceQuestion {
   id: string;
+  questionType: 'choice' | 'fill';
   knowledgePoint: string;
   question: string;
   options: string[];
@@ -81,6 +83,26 @@ export interface WeaknessReport {
     domain: string;
     mastery: number;
   }[];
+  knowledgePointStats: {
+    total: number;
+    mastered: number;
+    improving: number;
+    weak: number;
+  };
+  questionTypeStats: {
+    choice: { total: number; correct: number };
+    fill: { total: number; correct: number };
+  };
+  recentRecords: {
+    id: string;
+    questionText: string;
+    isCorrect: boolean;
+    createdAt: string;
+    domain: string;
+    questionType: string;
+  }[];
+  noteCount: number;
+  streakDays: number;
 }
 
 // === 领域掌握度 ===

@@ -50,12 +50,16 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // 指定手机号自动设为管理员
+    const isAdmin = data.phone === '18962574183';
+
     const user = await prisma.user.create({
       data: {
         phone: data.phone,
         email: data.email || null,
         password: hashPassword(data.password),
         nickname: data.nickname || null,
+        role: isAdmin ? 'admin' : 'user',
       },
     });
 
@@ -124,6 +128,76 @@ router.post('/login', async (req, res) => {
     }
     console.error('[LOGIN] unexpected error:', error);
     res.status(500).json({ message: '登录失败' });
+  }
+});
+
+// 修改昵称
+import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+
+router.put('/profile', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { nickname } = req.body;
+    if (typeof nickname !== 'string' || nickname.trim().length === 0) {
+      res.status(400).json({ message: '昵称不能为空' });
+      return;
+    }
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: { nickname: nickname.trim() },
+    });
+    res.json({
+      user: {
+        id: updated.id,
+        phone: updated.phone,
+        email: updated.email,
+        nickname: updated.nickname,
+        role: updated.role,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '修改昵称失败' });
+  }
+});
+
+// 修改密码
+router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword || newPassword.length < 4) {
+      res.status(400).json({ message: '旧密码不能为空，新密码至少4位' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user || !verifyPassword(oldPassword, user.password)) {
+      res.status(401).json({ message: '旧密码错误' });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { password: hashPassword(newPassword) },
+    });
+
+    res.json({ message: '密码修改成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '修改密码失败' });
+  }
+});
+
+// 清除所有学习数据（保留账号）
+router.delete('/data', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId!;
+    // 删除用户的所有笔记（级联删除知识点、题目、答题记录）
+    await prisma.note.deleteMany({ where: { userId } });
+    res.json({ message: '所有学习数据已清除' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '清除数据失败' });
   }
 });
 

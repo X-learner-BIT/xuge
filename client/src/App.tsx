@@ -8,6 +8,7 @@ import { UploadPage } from '@/pages/UploadPage';
 import { ReviewPage } from '@/pages/ReviewPage';
 import { ReportPage } from '@/pages/ReportPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { AdminPage } from '@/pages/AdminPage';
 import { useAuthStore } from '@/store/authStore';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/review" element={<ReviewPage />} />
         <Route path="/report" element={<ReportPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

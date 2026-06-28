@@ -1,172 +1,327 @@
 import { useState } from 'react';
-import { User, Bell, SlidersHorizontal, Download, Trash2, Feather } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  User,
+  Lock,
+  Trash2,
+  LogOut,
+  Feather,
+  Save,
+  AlertCircle,
+  CheckCircle,
+  Smartphone,
+  Mail,
+  Calendar,
+  Shield,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-
-function Toggle({ defaultOn = false }: { defaultOn?: boolean }) {
-  const [on, setOn] = useState(defaultOn);
-  return (
-    <button
-      onClick={() => setOn(!on)}
-      className={`relative h-6 w-11 rounded-full transition-colors duration-300 ${
-        on ? 'bg-primary' : 'bg-slate-300'
-      }`}
-    >
-      <div
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-300 ${
-          on ? 'translate-x-[22px]' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
-  );
-}
+import { authApi } from '@/services/auth';
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
+  const logout = useAuthStore((s) => s.logout);
+
+  // 昵称编辑
+  const [nickname, setNickname] = useState(user?.nickname || '');
+  const [savingNickname, setSavingNickname] = useState(false);
+  const [nicknameMsg, setNicknameMsg] = useState('');
+
+  // 密码修改
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState('');
+
+  // 清除数据
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const handleSaveNickname = async () => {
+    const val = nickname.trim();
+    if (!val) {
+      setNicknameMsg('昵称不能为空');
+      return;
+    }
+    setSavingNickname(true);
+    setNicknameMsg('');
+    try {
+      const res = await authApi.updateNickname(val);
+      updateUser(res.user);
+      setNicknameMsg('昵称已保存');
+      setTimeout(() => setNicknameMsg(''), 2000);
+    } catch (e: any) {
+      setNicknameMsg(e.response?.data?.message || '保存失败');
+    } finally {
+      setSavingNickname(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) {
+      setPasswordMsg('请填写完整');
+      return;
+    }
+    if (newPassword.length < 4) {
+      setPasswordMsg('新密码至少4位');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg('两次输入的新密码不一致');
+      return;
+    }
+    setSavingPassword(true);
+    setPasswordMsg('');
+    try {
+      await authApi.updatePassword(oldPassword, newPassword);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordMsg('密码修改成功');
+      setTimeout(() => setPasswordMsg(''), 2000);
+    } catch (e: any) {
+      setPasswordMsg(e.response?.data?.message || '修改失败');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleClearData = async () => {
+    setClearing(true);
+    try {
+      await authApi.clearData();
+      setShowClearConfirm(false);
+      alert('所有学习数据已清除');
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.response?.data?.message || '清除失败');
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const formatDate = (iso?: string) => {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <div className="space-y-5">
-        {/* Profile */}
-        <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-            <User className="h-5 w-5 text-primary" />
-            个人资料
-          </h3>
-          <div className="mb-5 flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-accent text-xl font-semibold text-white">
-              {user?.nickname?.[0] || user?.phone?.[0] || user?.email?.[0] || 'U'}
-            </div>
-            <div>
-              <div className="font-semibold">{user?.nickname || '用户'}</div>
-              <div className="text-[13px] text-text-muted">{user?.phone || user?.email || '未绑定'}</div>
-            </div>
-            <button className="ml-auto rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary-light hover:text-primary">
-              更换头像
-            </button>
+    <div className="mx-auto max-w-[720px] space-y-5">
+      {/* 个人资料 */}
+      <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
+        <h3 className="mb-5 flex items-center gap-2 text-base font-semibold">
+          <User className="h-5 w-5 text-primary" />
+          个人资料
+        </h3>
+
+        <div className="mb-5 flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary-light to-accent text-xl font-semibold text-white">
+            {user?.nickname?.[0] || user?.phone?.[0] || user?.email?.[0] || 'U'}
           </div>
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-                昵称
-              </label>
-              <input
-                type="text"
-                defaultValue={user?.nickname || ''}
-                className="w-full rounded-xl border border-border bg-slate-50 px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
-              />
+          <div>
+            <div className="font-semibold">{user?.nickname || '用户'}</div>
+            <div className="text-[13px] text-text-muted">
+              {user?.phone || user?.email || '未绑定'}
             </div>
-            <div>
-              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
-                邮箱
-              </label>
-              <input
-                type="email"
-                defaultValue={user?.email || ''}
-                readOnly
-                className="w-full rounded-xl border border-border bg-slate-100 px-4 py-2.5 text-sm text-text-muted outline-none"
-              />
-            </div>
-            <button className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-semibold text-white shadow-primary transition-all duration-300 hover:-translate-y-0.5 hover:shadow-primary-hover">
-              保存修改
-            </button>
           </div>
         </div>
 
-        {/* Notifications */}
-        <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-            <Bell className="h-5 w-5 text-secondary" />
-            通知设置
-          </h3>
-          <div className="space-y-4">
-            {[
-              { label: '每日复习提醒', desc: '每天固定时间提醒你完成复习', on: true },
-              { label: '薄弱领域提醒', desc: '当某领域掌握度显著下降时通知', on: true },
-              { label: '邮件报告', desc: '每周日发送掌握度周报', on: false },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium">{item.label}</div>
-                  <div className="text-xs text-text-muted">{item.desc}</div>
-                </div>
-                <Toggle defaultOn={item.on} />
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">
+              昵称
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-slate-50 px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+              />
+              <button
+                onClick={handleSaveNickname}
+                disabled={savingNickname}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-primary-dark px-4 py-2.5 text-sm font-semibold text-white shadow-primary transition-all duration-300 hover:-translate-y-0.5 hover:shadow-primary-hover disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {savingNickname ? '保存中…' : '保存'}
+              </button>
+            </div>
+            {nicknameMsg && (
+              <div className={`mt-1.5 flex items-center gap-1 text-xs ${nicknameMsg.includes('成功') || nicknameMsg.includes('已保存') ? 'text-green-600' : 'text-red-500'}`}>
+                {nicknameMsg.includes('成功') || nicknameMsg.includes('已保存') ? <CheckCircle className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                {nicknameMsg}
               </div>
-            ))}
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">手机号</label>
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-slate-100 px-4 py-2.5 text-sm text-text-muted">
+                <Smartphone className="h-4 w-4 text-text-muted/60" />
+                {user?.phone || '未绑定'}
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">邮箱</label>
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-slate-100 px-4 py-2.5 text-sm text-text-muted">
+                <Mail className="h-4 w-4 text-text-muted/60" />
+                {user?.email || '未绑定'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">注册时间</label>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-slate-100 px-4 py-2.5 text-sm text-text-muted">
+              <Calendar className="h-4 w-4 text-text-muted/60" />
+              {formatDate(user?.createdAt)}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-5">
-        {/* Review Preferences */}
-        <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-            <SlidersHorizontal className="h-5 w-5 text-accent" />
-            复习偏好
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">每日题量</div>
-                <div className="text-xs text-text-muted">每天自动生成的题目数量</div>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={5}
-                  max={30}
-                  defaultValue={10}
-                  className="h-1.5 w-32 appearance-none rounded-full bg-border outline-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow"
-                />
-                <span className="min-w-[24px] text-sm font-semibold">10</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">优先出题领域</div>
-                <div className="text-xs text-text-muted">薄弱知识点优先</div>
-              </div>
-              <Toggle defaultOn />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">复习提醒时间</div>
-              <select className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm outline-none focus:border-primary-light">
-                <option>早上 08:00</option>
-                <option>中午 12:30</option>
-                <option>晚上 20:00</option>
-              </select>
+      {/* 账户安全 */}
+      <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
+        <h3 className="mb-5 flex items-center gap-2 text-base font-semibold">
+          <Shield className="h-5 w-5 text-secondary" />
+          账户安全
+        </h3>
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">旧密码</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted/60" />
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder="请输入当前密码"
+                className="w-full rounded-xl border border-border bg-slate-50 py-2.5 pl-9 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+              />
             </div>
           </div>
-        </div>
-
-        {/* Data Management */}
-        <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-            <Download className="h-5 w-5 text-primary" />
-            数据管理
-          </h3>
-          <div className="space-y-3">
-            <div className="text-sm text-text-secondary">导出你的掌握度报告和错题本</div>
-            <div className="flex flex-wrap gap-2">
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary-light hover:text-primary hover:bg-primary/[0.04]">
-                <Download className="h-3.5 w-3.5" /> 导出 PDF 报告
-              </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-all hover:border-primary-light hover:text-primary hover:bg-primary/[0.04]">
-                <Download className="h-3.5 w-3.5" /> 导出 Excel
-              </button>
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-50">
-                <Trash2 className="h-3.5 w-3.5" /> 清除所有数据
-              </button>
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">新密码</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted/60" />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="至少4位"
+                className="w-full rounded-xl border border-border bg-slate-50 py-2.5 pl-9 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+              />
             </div>
           </div>
-        </div>
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">确认新密码</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted/60" />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="再次输入新密码"
+                className="w-full rounded-xl border border-border bg-slate-50 py-2.5 pl-9 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
+              />
+            </div>
+          </div>
 
-        {/* Footer */}
-        <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.03] to-secondary/[0.03] p-5 text-center">
-          <p className="text-[13px] text-text-muted">
-            <Feather className="mr-1 inline h-4 w-4 text-primary" />
-            栩格 v1.0 · 把你的知识管起来，让遗忘有据可查
-          </p>
+          <button
+            onClick={handleChangePassword}
+            disabled={savingPassword}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-secondary to-secondary/80 px-4 py-2.5 text-sm font-semibold text-white shadow-primary transition-all duration-300 hover:-translate-y-0.5 hover:shadow-primary-hover disabled:opacity-50"
+          >
+            <Lock className="h-4 w-4" />
+            {savingPassword ? '修改中…' : '修改密码'}
+          </button>
+
+          {passwordMsg && (
+            <div className={`flex items-center gap-1 text-xs ${passwordMsg.includes('成功') ? 'text-green-600' : 'text-red-500'}`}>
+              {passwordMsg.includes('成功') ? <CheckCircle className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+              {passwordMsg}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* 数据管理 */}
+      <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
+        <h3 className="mb-5 flex items-center gap-2 text-base font-semibold">
+          <Trash2 className="h-5 w-5 text-red-500" />
+          数据管理
+        </h3>
+
+        <div className="space-y-4">
+          <div className="rounded-xl bg-red-50 p-4">
+            <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-red-700">
+              <AlertCircle className="h-4 w-4" /> 清除所有学习数据
+            </div>
+            <p className="text-xs text-red-600">
+              此操作将删除你所有的笔记、知识点、题目和答题记录，但会保留你的账号信息。清除后无法恢复，请谨慎操作。
+            </p>
+          </div>
+
+          {!showClearConfirm ? (
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-500 transition-all hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" /> 清除所有学习数据
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleClearData}
+                disabled={clearing}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-600 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {clearing ? '清除中…' : '确认清除'}
+              </button>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-all hover:bg-slate-50"
+              >
+                取消
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 退出登录 */}
+      <div className="rounded-2xl border border-border/60 bg-bg-card p-6 shadow-card">
+        <h3 className="mb-5 flex items-center gap-2 text-base font-semibold">
+          <LogOut className="h-5 w-5 text-text-secondary" />
+          退出登录
+        </h3>
+        <p className="mb-4 text-sm text-text-secondary">退出后将需要重新输入账号密码登录。</p>
+        <button
+          onClick={handleLogout}
+          className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-secondary transition-all hover:border-primary-light hover:text-primary hover:bg-primary/[0.04]"
+        >
+          <LogOut className="h-4 w-4" /> 退出当前账号
+        </button>
+      </div>
+
+      {/* Footer */}
+      <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/[0.03] to-secondary/[0.03] p-5 text-center">
+        <p className="text-[13px] text-text-muted">
+          <Feather className="mr-1 inline h-4 w-4 text-primary" />
+          栩格 v1.0 · 把你的知识管起来，让遗忘有据可查
+        </p>
       </div>
     </div>
   );
