@@ -50,6 +50,7 @@ model KnowledgePoint {
   name        String
   description String? @db.Text
   domain      String?
+  type        String? // concept | vocabulary | formula | theorem | question | method | process
   mastery     Int     @default(0) // 0-100
 
   noteId String

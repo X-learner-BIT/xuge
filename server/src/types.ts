@@ -4,6 +4,7 @@ export interface KnowledgePoint {
   name: string;
   description: string | null;
   domain: string | null;
+  type: string | null;
   mastery: number;
 }
 
