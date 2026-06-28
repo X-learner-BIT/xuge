@@ -33,6 +33,11 @@ app.use(cors({
 
 app.use(express.json());
 
+// 根路径（Railway 健康检查默认访问 /）
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'xuge-api', time: new Date().toISOString() });
+});
+
 // 健康检查
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
