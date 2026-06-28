@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle, RotateCcw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import type { ChoiceQuestion } from '@/types';
 
 interface Props {

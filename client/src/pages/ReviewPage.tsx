@@ -17,7 +17,7 @@ import {
 import { QuestionCard } from '@/components/QuestionCard';
 import { useReview } from '@/hooks/useReview';
 import { useNotes } from '@/hooks/useNotes';
-import type { ChoiceQuestion } from '@/types';
+
 
 type ReviewMode = 'choice' | 'fill' | 'ai';
 type PageState = 'settings' | 'reviewing' | 'finished' | 'ai-chat';

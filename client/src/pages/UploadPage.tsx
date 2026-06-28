@@ -30,7 +30,7 @@ export function UploadPage() {
     'idle' | 'uploading' | 'analyzing' | 'completed' | 'failed'
   >('idle');
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -72,7 +72,6 @@ export function UploadPage() {
         return;
       }
 
-      setAnalyzingNoteId(res.id);
       setAnalysisStatus('analyzing');
 
       // 开始轮询分析状态
