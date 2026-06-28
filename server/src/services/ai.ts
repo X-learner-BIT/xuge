@@ -435,8 +435,48 @@ function parseQuestionFromKnowledgePoint(
   };
 }
 
+/**
+ * 从笔记原文中提取与知识点相关的上下文片段
+ */
+function extractContextFromNote(noteContent: string, keyword: string, maxLength: number): string {
+  if (!noteContent || !keyword) return '';
+
+  // 如果笔记内容很短，直接返回全部
+  if (noteContent.length <= maxLength) {
+    return noteContent.trim();
+  }
+
+  // 尝试在笔记内容中查找知识点名称的位置
+  const idx = noteContent.indexOf(keyword);
+  if (idx === -1) {
+    // 如果找不到完整名称，尝试查找前10个字符
+    const shortKeyword = keyword.slice(0, Math.min(10, keyword.length));
+    const shortIdx = noteContent.indexOf(shortKeyword);
+    if (shortIdx === -1) {
+      // 仍然找不到，返回笔记开头
+      return noteContent.slice(0, maxLength).trim() + (noteContent.length > maxLength ? '...' : '');
+    }
+    // 提取前后上下文
+    const start = Math.max(0, shortIdx - Math.floor(maxLength / 2));
+    const end = Math.min(noteContent.length, shortIdx + shortKeyword.length + Math.floor(maxLength / 2));
+    let context = noteContent.slice(start, end).trim();
+    if (start > 0) context = '...' + context;
+    if (end < noteContent.length) context = context + '...';
+    return context;
+  }
+
+  // 找到了完整名称，提取前后上下文
+  const half = Math.floor(maxLength / 2);
+  const start = Math.max(0, idx - half);
+  const end = Math.min(noteContent.length, idx + keyword.length + half);
+  let context = noteContent.slice(start, end).trim();
+  if (start > 0) context = '...' + context;
+  if (end < noteContent.length) context = context + '...';
+  return context;
+}
+
 export async function generateQuestions(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string } | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
   count = 5,
   questionType: 'choice' | 'fill' = 'choice',
   creativeMode = false
@@ -537,10 +577,15 @@ ${sharedExamples}
 4. 解析必须详细说明正确选项为什么对
 5. 题型灵活：可以是单项选择题（只有1个正确答案），也可以是多选题（有2-3个正确答案）。如果是多选题，correctAnswer 用逗号分隔多个字母，如 "A,C"。
 
-知识点列表：
-${selected.map((kp, i) => `【${i + 1}】${kp.name}（${kp.domain || '通用'}）
+知识点列表（每个知识点后附有该知识点在笔记原文中的上下文，请务必参考原文来理解知识点的真实含义和考察方向）：
+${needGenerate.map((kp, i) => {
+  const noteContent = kp.note?.content || '';
+  const context = extractContextFromNote(noteContent, kp.name, 600);
+  return `【${i + 1}】${kp.name}（${kp.domain || '通用'}）
 描述：${kp.description || '无详细描述'}
-所属笔记：${kp.note?.title || '未知笔记'}（类型：${kp.note?.contentType || 'text'}）`).join('\n\n')}
+所属笔记：${kp.note?.title || '未知笔记'}（类型：${kp.note?.contentType || 'text'}）
+原文上下文：${context || '无原文内容'}`;
+}).join('\n\n')}
 
 请严格按以下 JSON 格式返回，不要包含任何其他文字，不要加 markdown 代码块：
 {
@@ -573,10 +618,15 @@ ${sharedExamples}
 4. 解析必须说明正确选项与知识点的对应关系
 5. 题型可以是单项选择题（只有1个正确答案），也可以是多选题（有2-3个正确答案）。如果是多选题，correctAnswer 用逗号分隔多个字母，如 "A,C"。
 
-知识点列表：
-${selected.map((kp, i) => `【${i + 1}】${kp.name}（${kp.domain || '通用'}）
+知识点列表（每个知识点后附有该知识点在笔记原文中的上下文，请务必参考原文来理解知识点的真实含义和考察方向）：
+${needGenerate.map((kp, i) => {
+  const noteContent = kp.note?.content || '';
+  const context = extractContextFromNote(noteContent, kp.name, 600);
+  return `【${i + 1}】${kp.name}（${kp.domain || '通用'}）
 描述：${kp.description || '无详细描述'}
-所属笔记：${kp.note?.title || '未知笔记'}（类型：${kp.note?.contentType || 'text'}）`).join('\n\n')}
+所属笔记：${kp.note?.title || '未知笔记'}（类型：${kp.note?.contentType || 'text'}）
+原文上下文：${context || '无原文内容'}`;
+}).join('\n\n')}
 
 请严格按以下 JSON 格式返回，不要包含任何其他文字，不要加 markdown 代码块：
 {
@@ -778,7 +828,7 @@ function scoreAndRankCandidates(candidates: string[]): { text: string; score: nu
 }
 
 function heuristicGenerateQuestions(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string } | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
   count = 5,
   creativeMode = false
 ): Omit<Question, 'id' | 'knowledgePointId'>[] {

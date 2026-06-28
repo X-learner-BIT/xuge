@@ -26,7 +26,7 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res) => {
       where,
       orderBy: { mastery: 'asc' },
       take: count * 2,
-      include: { note: { select: { title: true, contentType: true } } },
+      include: { note: { select: { title: true, contentType: true, content: true } } },
     });
 
     if (knowledgePoints.length === 0) {
