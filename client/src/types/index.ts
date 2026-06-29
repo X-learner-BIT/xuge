@@ -53,6 +53,7 @@ export interface KnowledgePoint {
 export interface ChoiceQuestion {
   id: string;
   questionType: 'choice' | 'fill';
+  answerType?: string;
   knowledgePoint: string;
   question: string;
   options: string[];

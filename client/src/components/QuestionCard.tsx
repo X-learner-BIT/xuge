@@ -88,8 +88,8 @@ function ChoiceQuestionCard({
   onSubmitAll,
 }: Props) {
   const isReviewing = phase === 'reviewing';
-  // 判断是否为多选题：correctAnswer 包含逗号
-  const isMultiSelect = question.correctAnswer.includes(',');
+  // 判断是否为多选题：优先使用 answerType，如果没有则根据 correctAnswer 推断
+  const isMultiSelect = question.answerType === 'multiple' || (!question.answerType && question.correctAnswer.includes(','));
 
   // 多选题：解析当前已选中的字母集合
   const selectedLetters = userAnswer

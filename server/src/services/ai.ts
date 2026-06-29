@@ -660,7 +660,7 @@ ${sharedExamples}
 2. 错误选项必须是"看似合理但实际错误"的常见误解
 3. 正确答案和错误选项在文字长度、专业程度上要相近
 4. 解析必须详细说明正确选项为什么对
-5. 题型灵活：可以是单项选择题（只有1个正确答案），也可以是多选题（有2-3个正确答案）。如果是多选题，correctAnswer 用逗号分隔多个字母，如 "A,C"。
+5. 每道题必须明确标注 answerType："single"（单选题，只有1个正确答案）或 "multiple"（多选题，有2-3个正确答案）。严禁混淆：如果 answerType="multiple"，correctAnswer 必须用逗号分隔多个字母，如 "A,C"；如果 answerType="single"，correctAnswer 只能是一个字母，如 "A"。
 
 知识点列表（每个知识点标注了 type，并附有原文上下文，请务必参考 type 和原文来理解考察方向）：
 ${needGenerate.map((kp, i) => {
@@ -680,6 +680,7 @@ ${needGenerate.map((kp, i) => {
       "questionText": "...",
       "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
       "correctAnswer": "A",
+      "answerType": "single",
       "explanation": "...",
       "domain": "..."
     }
@@ -707,7 +708,7 @@ ${sharedExamples}
 2. 错误选项必须是知识点中明确提到的错误理解或易混淆概念
 3. 正确答案和错误选项在文字长度、专业程度上要相近
 4. 解析必须说明正确选项与知识点的对应关系
-5. 题型可以是单项选择题（只有1个正确答案），也可以是多选题（有2-3个正确答案）。如果是多选题，correctAnswer 用逗号分隔多个字母，如 "A,C"。
+5. 每道题必须明确标注 answerType："single"（单选题，只有1个正确答案）或 "multiple"（多选题，有2-3个正确答案）。严禁混淆：如果 answerType="multiple"，correctAnswer 必须用逗号分隔多个字母，如 "A,C"；如果 answerType="single"，correctAnswer 只能是一个字母，如 "A"。
 
 知识点列表（每个知识点标注了 type，并附有原文上下文，请务必参考 type 和原文来理解考察方向）：
 ${needGenerate.map((kp, i) => {
@@ -727,6 +728,7 @@ ${needGenerate.map((kp, i) => {
       "questionText": "...",
       "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
       "correctAnswer": "A",
+      "answerType": "single",
       "explanation": "...",
       "domain": "..."
     }
@@ -763,6 +765,24 @@ ${needGenerate.map((kp, i) => {
       const correctLetters = rawCorrect.split(/[,，]/).map((s: string) => s.trim()).filter((s: string) => /^[A-D]$/.test(s));
       let correctAnswer = correctLetters.length > 0 ? correctLetters.join(',') : 'A';
 
+      // 解析 answerType：优先使用 LLM 返回的，如果缺失则根据 correctAnswer 推断
+      let answerType = String(q.answerType || '').toLowerCase();
+      if (answerType !== 'single' && answerType !== 'multiple') {
+        // LLM 没有返回或返回了无效值，根据 correctAnswer 推断
+        answerType = correctAnswer.includes(',') ? 'multiple' : 'single';
+      }
+
+      // 验证一致性：如果 answerType 是 multiple 但 correctAnswer 没有逗号，强制改为 single
+      if (answerType === 'multiple' && !correctAnswer.includes(',')) {
+        console.warn(`[Question Validation] answerType="multiple" but correctAnswer="${correctAnswer}" has no comma, forcing to single`);
+        answerType = 'single';
+      }
+      // 验证一致性：如果 answerType 是 single 但 correctAnswer 有逗号，这是一个严重错误，保留 correctAnswer 并改为 multiple
+      if (answerType === 'single' && correctAnswer.includes(',')) {
+        console.warn(`[Question Validation] answerType="single" but correctAnswer="${correctAnswer}" has comma, forcing to multiple`);
+        answerType = 'multiple';
+      }
+
       // 随机打乱选项顺序，避免LLM总是将正确答案放在固定位置
       const shuffled = shuffleOptionsMulti(normalizedOptions, correctAnswer);
       normalizedOptions = shuffled.options;
@@ -772,6 +792,7 @@ ${needGenerate.map((kp, i) => {
         questionText: String(q.questionText || `关于"${selected[idx]?.name}"，以下哪项正确？`),
         options: normalizedOptions,
         correctAnswer: correctAnswer,
+        answerType,
         explanation: String(q.explanation || selected[idx]?.description || ''),
         domain: String(q.domain || selected[idx]?.domain || '通用'),
       };

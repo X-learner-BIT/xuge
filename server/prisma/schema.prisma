@@ -64,6 +64,7 @@ model KnowledgePoint {
 model Question {
   id             String  @id @default(cuid())
   questionType   String  @default("choice") // choice, fill
+  answerType     String? // single | multiple
   questionText   String  @db.Text
   options        Json    // choice: 选项数组; fill: 提示信息数组
   correctAnswer  String

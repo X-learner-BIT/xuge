@@ -42,6 +42,7 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res) => {
         prisma.question.create({
           data: {
             questionType,
+            answerType: q.answerType,
             questionText: q.questionText,
             options: q.options,
             correctAnswer: q.correctAnswer,
@@ -57,6 +58,7 @@ router.post('/generate', authMiddleware, async (req: AuthRequest, res) => {
       questions: created.map((q) => ({
         id: q.id,
         questionType: q.questionType,
+        answerType: q.answerType,
         knowledgePoint: knowledgePoints.find((kp) => kp.id === q.knowledgePointId)?.name || '',
         question: q.questionText,
         options: q.options,
