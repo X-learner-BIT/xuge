@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Feather, ArrowRight, UserPlus, Phone, Mail, Lock, User, Sparkles } from 'lucide-react';
+import { Feather, ArrowRight, UserPlus, Phone, Mail, Lock, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
@@ -237,10 +237,7 @@ export function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-6 flex items-center justify-center gap-2 text-xs text-white/50">
-              <Sparkles className="h-3 w-3" />
-              <span>使用手机号 18962574183，密码 xl040207 进行测试</span>
-            </div>
+
           </div>
         </div>
       </div>
