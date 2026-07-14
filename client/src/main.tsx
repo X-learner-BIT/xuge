@@ -5,8 +5,12 @@ import './index.css'
 import App from './App'
 import { useAuthStore } from './store/authStore'
 
-// Restore auth state before render
-useAuthStore.getState().restore()
+const state = useAuthStore.getState();
+state.restore();
+
+if (state.isDark) {
+  document.body.classList.add('dark');
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -17,6 +17,7 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const isDark = useAuthStore((s) => s.isDark);
   const [title, subtitle] = pageTitles[location.pathname] || ['页面', ''];
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -24,7 +25,6 @@ export function AppLayout() {
     const q = searchQuery.trim();
     if (!q) return;
     if (location.pathname === '/notes') {
-      // 如果已经在笔记页面，刷新 URL 参数即可（由 NotesListPage 监听）
       navigate(`/notes?search=${encodeURIComponent(q)}`, { replace: true });
     } else {
       navigate(`/notes?search=${encodeURIComponent(q)}`);
@@ -33,39 +33,39 @@ export function AppLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-bg font-sans text-text-primary">
+    <div className={`flex min-h-screen font-sans transition-colors duration-300 ${isDark ? 'bg-background-dark' : 'bg-background'}`}>
       <Sidebar />
       <div className="ml-[72px] min-h-screen flex-1">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-40 flex items-center justify-between border-b border-transparent bg-bg/80 px-9 py-5 backdrop-blur-lg">
+        <div className={`sticky top-0 z-40 flex items-center justify-between px-9 py-5 backdrop-blur-xl border-b transition-all duration-300 ${isDark ? 'bg-background-dark/80 border-border-dark/40' : 'bg-white/80 border-border/40'}`}>
           <div className="flex items-center gap-3">
-            <h1 className="text-[22px] font-bold tracking-tight">{title}</h1>
+            <h1 className={`text-[24px] font-bold tracking-tight ${isDark ? 'text-text-darkPrimary' : 'text-text-primary'}`}>
+              {title}
+            </h1>
             {subtitle && (
-              <span className="ml-2 border-l border-border pl-3 text-sm text-text-secondary">
+              <span className={`ml-3 border-l px-3 text-sm ${isDark ? 'border-border-dark/40 text-text-darkSecondary' : 'border-border/60 text-text-secondary'}`}>
                 {subtitle}
               </span>
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center rounded-xl border border-border bg-bg-card px-3.5 py-2 transition-all duration-300 focus-within:border-primary-light focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.1)]">
-              <Search className="h-3.5 w-3.5 text-text-muted" />
+            <div className={`flex items-center rounded-xl border px-4 py-2.5 transition-all duration-300 focus-within:border-primary-400 focus-within:shadow-[0_0_0_3px_rgba(99,102,241,0.15)] ${isDark ? 'border-border-dark/40 bg-background-cardDark/50' : 'border-border/40 bg-white/60'}`}>
+              <Search className={`h-4 w-4 ${isDark ? 'text-text-darkMuted' : 'text-text-muted'}`} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="搜索笔记、知识点…"
-                className="ml-2 w-[200px] border-none bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                className={`ml-2 w-[200px] border-none bg-transparent text-sm outline-none placeholder:text-text-muted ${isDark ? 'text-text-darkPrimary' : 'text-text-primary'}`}
               />
             </div>
-            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-primary-light to-accent text-sm font-semibold text-white transition-transform duration-300 hover:scale-105 cursor-pointer">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 text-sm font-semibold text-white shadow-glow transition-transform duration-300 hover:scale-105 cursor-pointer">
               {user?.nickname?.[0] || user?.phone?.[0] || user?.email?.[0] || 'U'}
             </div>
           </div>
         </div>
 
-        {/* Page Content */}
-        <main className="px-9 pb-9 pt-4">
+        <main className="px-9 pb-9 pt-5">
           <Outlet />
         </main>
       </div>

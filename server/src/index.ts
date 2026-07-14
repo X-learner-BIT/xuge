@@ -23,7 +23,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'https://x-learner-bit.github.io',
       'https://x-learner-bit.github.io/xuge',
     ].filter(Boolean)
-  : ['http://localhost:5173', 'http://localhost:5174'];
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 app.use(cors({
   origin: allowedOrigins,
