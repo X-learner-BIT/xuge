@@ -13,7 +13,6 @@ model User {
   phone     String?  @unique
   password  String
   nickname  String?
-  role      String   @default("user")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -67,7 +66,7 @@ model Question {
   answerType     String? // single | multiple
   questionText   String  @db.Text
   options        Json    // choice: 选项数组; fill: 提示信息数组
-  correctAnswer  String
+  correctAnswer  String  @db.Text
   explanation    String  @db.Text
   domain         String?
 

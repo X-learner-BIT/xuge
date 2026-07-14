@@ -4,7 +4,6 @@ export interface User {
   phone?: string | null;
   email?: string | null;
   nickname: string | null;
-  role?: string;
   createdAt: string;
 }
 

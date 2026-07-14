@@ -2,8 +2,8 @@ import { api } from './api';
 import type { Note } from '@/types';
 
 export const notesApi = {
-  getNotes: (params?: { search?: string; domain?: string; source?: string }) =>
-    api.get<Note[]>('/notes', { params }).then((res) => res.data),
+  getNotes: (params?: { search?: string; domain?: string; source?: string; page?: number; pageSize?: number }) =>
+    api.get<{ data: Note[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }>('/notes', { params }).then((res) => res.data),
   getNote: (id: string) =>
     api.get<Note & { knowledgePoints: any[] }>(`/notes/${id}`).then((res) => res.data),
   uploadFile: (file: File, title?: string) => {

@@ -6,12 +6,19 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number; totalPages: number }>({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+  });
 
-  const fetchNotes = useCallback(async (params?: { search?: string; domain?: string; source?: string }) => {
+  const fetchNotes = useCallback(async (params?: { search?: string; domain?: string; source?: string; page?: number; pageSize?: number }) => {
     setLoading(true);
     try {
-      const data = await notesApi.getNotes(params);
-      setNotes(data);
+      const result = await notesApi.getNotes(params);
+      setNotes(result.data);
+      setPagination(result.pagination);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.message || '获取笔记失败');
@@ -86,5 +93,5 @@ export function useNotes() {
     fetchNotes();
   }, [fetchNotes]);
 
-  return { notes, loading, error, fetchNotes, uploadFile, createTextNote, deleteNote, updateNote, reanalyzeNote };
+  return { notes, loading, error, pagination, fetchNotes, uploadFile, createTextNote, deleteNote, updateNote, reanalyzeNote };
 }

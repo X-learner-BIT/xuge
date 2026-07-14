@@ -8,7 +8,6 @@ import {
   Settings,
   LogOut,
   Feather,
-  Shield,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -24,8 +23,6 @@ const navItems = [
 export function Sidebar() {
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'admin';
 
   return (
     <nav className="fixed left-0 top-0 z-50 flex h-screen w-[72px] flex-col items-center border-r border-border/60 bg-white/80 py-5 backdrop-blur-xl transition-all duration-300 hover:bg-white/95">
@@ -57,21 +54,6 @@ export function Sidebar() {
             </NavLink>
           );
         })}
-        {isAdmin && (
-          <NavLink
-            to="/admin"
-            className={`group relative flex h-12 w-12 items-center justify-center rounded-xl text-xl transition-all duration-300 ${
-              location.pathname.startsWith('/admin')
-                ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md shadow-red-500/30'
-                : 'text-text-muted hover:bg-red-50 hover:text-red-500'
-            }`}
-          >
-            <Shield className="h-5 w-5" />
-            <span className="pointer-events-none absolute left-[calc(100%+12px)] z-50 whitespace-nowrap rounded-lg bg-text-primary px-3 py-1.5 text-xs font-medium text-white opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 translate-x-[-4px]">
-              管理中心
-            </span>
-          </NavLink>
-        )}
       </div>
 
       <div className="mt-auto flex flex-col gap-1">

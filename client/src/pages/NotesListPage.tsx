@@ -10,36 +10,33 @@ import {
   Clock,
   AlertCircle,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { NoteCard } from '@/components/NoteCard';
 import { EmptyState } from '@/components/EmptyState';
 import { useNotes } from '@/hooks/useNotes';
-import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/utils/formatDate';
 
 type ViewMode = 'card' | 'list';
-type SourceFilter = 'all' | 'self' | 'synced';
 
 export function NotesListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { notes, loading, deleteNote, fetchNotes } = useNotes();
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'admin';
+  const { notes, loading, pagination, deleteNote, fetchNotes } = useNotes();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // 根据来源筛选加载笔记
   useEffect(() => {
-    const params: { search?: string; source?: string } = {};
+    const params: { search?: string; page?: number; pageSize?: number } = {};
     const q = searchParams.get('search');
     if (q) params.search = q;
-    if (isAdmin && sourceFilter !== 'all') {
-      params.source = sourceFilter;
-    }
+    params.page = currentPage;
+    params.pageSize = 10;
     fetchNotes(params);
-  }, [searchParams, sourceFilter, isAdmin, fetchNotes]);
+  }, [searchParams, fetchNotes, currentPage]);
 
   // 从 URL 参数读取搜索关键词
   useEffect(() => {
@@ -97,27 +94,7 @@ export function NotesListPage() {
             <ListIcon className="h-4 w-4" />
             <span className="ml-2">列表</span>
           </button>
-          {isAdmin && (
-            <div className="ml-3 flex items-center gap-1 rounded-xl border border-border bg-bg-card p-1">
-              {([
-                { key: 'all', label: '全部' },
-                { key: 'self', label: '自己上传' },
-                { key: 'synced', label: '数据库' },
-              ] as { key: SourceFilter; label: string }[]).map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => setSourceFilter(item.key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs transition-all ${
-                    sourceFilter === item.key
-                      ? 'bg-primary font-medium text-white shadow-sm'
-                      : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
+          
         </div>
         <button
           onClick={() => navigate('/upload')}
@@ -274,6 +251,45 @@ export function NotesListPage() {
             </button>
           }
         />
+      )}
+
+      {/* Pagination */}
+      {!loading && pagination.totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-card text-sm text-text-secondary transition-all hover:border-primary-light hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+            const page = i + 1;
+            return (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`h-8 w-8 rounded-lg text-sm transition-all ${
+                  currentPage === page
+                    ? 'bg-primary text-white font-medium'
+                    : 'border border-border bg-bg-card text-text-secondary hover:border-primary-light hover:text-primary'
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
+          {pagination.totalPages > 5 && (
+            <span className="flex h-8 w-8 items-center justify-center text-sm text-text-muted">...</span>
+          )}
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+            disabled={currentPage === pagination.totalPages}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-card text-sm text-text-secondary transition-all hover:border-primary-light hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );

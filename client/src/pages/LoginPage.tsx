@@ -9,8 +9,8 @@ export function LoginPage() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // 登录字段
-  const [loginAccount, setLoginAccount] = useState('admin');
-  const [loginPassword, setLoginPassword] = useState('1234');
+  const [loginAccount, setLoginAccount] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // 注册字段
   const [phone, setPhone] = useState('');
@@ -107,7 +107,7 @@ export function LoginPage() {
                       className="w-full rounded-xl border border-border bg-slate-50 py-3 pl-10 pr-4 text-sm text-text-primary outline-none transition-all focus:border-primary-light focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">默认账号: admin / 1234</p>
+                  
                 </div>
                 <div>
                   <label className="mb-1.5 block text-[13px] font-semibold text-text-secondary">

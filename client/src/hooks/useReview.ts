@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { reviewApi } from '@/services/review';
 import type { ChoiceQuestion, WeaknessReport, DomainMasteryItem } from '@/types';
 import type { TrendItem, WrongQuestionItem, AiChatMessage } from '@/services/review';
@@ -13,6 +13,9 @@ export function useReview() {
   const [aiLoading, setAiLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const aiMessagesRef = useRef(aiMessages);
+  aiMessagesRef.current = aiMessages;
 
   const generateQuestions = useCallback(async (params: {
     count: number;
@@ -45,18 +48,19 @@ export function useReview() {
   const sendAiMessage = useCallback(async (noteIds: string[], content: string) => {
     setAiLoading(true);
     try {
-      const newMessages: AiChatMessage[] = [...aiMessages, { role: 'user', content }];
-      const data = await reviewApi.aiChat({ noteIds, messages: newMessages });
-      setAiMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+      const userMessage: AiChatMessage = { role: 'user', content };
+      const currentMessages = [...aiMessagesRef.current, userMessage];
+      const data = await reviewApi.aiChat({ noteIds, messages: currentMessages });
+      setAiMessages((prev) => [...prev, userMessage, { role: 'assistant', content: data.reply }]);
       return data.reply;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'AI 对话失败';
-      setAiMessages([...aiMessages, { role: 'user', content }, { role: 'assistant', content: `❌ ${errorMsg}` }]);
+      setAiMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: `❌ ${errorMsg}` }]);
       return null;
     } finally {
       setAiLoading(false);
     }
-  }, [aiMessages]);
+  }, []);
 
   const resetAiChat = useCallback(() => {
     setAiMessages([]);

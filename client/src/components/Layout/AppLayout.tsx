@@ -11,7 +11,6 @@ const pageTitles: Record<string, [string, string]> = {
   '/review': ['复习中心', '今日目标 10 题'],
   '/report': ['报告中心', '综合掌握度'],
   '/settings': ['设置', '个性化配置'],
-  '/admin': ['管理中心', '用户与数据管理'],
 };
 
 export function AppLayout() {

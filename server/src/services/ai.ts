@@ -1,6 +1,31 @@
 import type { KnowledgePoint, Question } from '../types.js';
 import { openai, model, llmEnabled, analyzeImages } from '../lib/llm.js';
 
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delayMs = 1000): Promise<T> {
+  let lastError: any;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const status = err.status || (err.response?.status || 0);
+      if (status >= 500 || status === 429 || err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET') {
+        console.warn(`[AI Retry] Attempt ${i + 1}/${maxRetries} failed, retrying in ${delayMs}ms:`, err.message);
+        await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, i)));
+      } else {
+        throw err;
+      }
+    }
+  }
+  console.error(`[AI Retry] All ${maxRetries} attempts failed:`, lastError?.message);
+  throw lastError;
+}
+
+function getOpenai() {
+  if (!openai) throw new Error('OpenAI client not initialized');
+  return openai;
+}
+
 export async function analyzeNote(
   content: string,
   images?: Buffer[],
@@ -145,15 +170,17 @@ ${fullContent}
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-    });
+    const completion = await withRetry(() =>
+      getOpenai().chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      })
+    );
 
     const raw = completion.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw);
@@ -390,15 +417,17 @@ ${chunk}
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-    });
+    const completion = await withRetry(() =>
+      getOpenai().chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      })
+    );
 
     const raw = completion.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw);
@@ -510,6 +539,7 @@ function parseQuestionFromKnowledgePoint(
     questionText: kp.name,
     options: sortedOptions,
     correctAnswer,
+    answerType: correctAnswer.includes(',') ? 'multiple' : 'single',
     explanation: explanation || kp.description.slice(0, 200),
     domain: kp.domain,
   };
@@ -556,7 +586,7 @@ function extractContextFromNote(noteContent: string, keyword: string, maxLength:
 }
 
 export async function generateQuestions(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; type: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
   count = 5,
   questionType: 'choice' | 'fill' = 'choice',
   creativeMode = false
@@ -736,15 +766,17 @@ ${needGenerate.map((kp, i) => {
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: creativeMode ? 0.3 : 0.1,
-      response_format: { type: 'json_object' },
-    });
+    const completion = await withRetry(() =>
+      getOpenai().chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: creativeMode ? 0.3 : 0.1,
+        response_format: { type: 'json_object' },
+      })
+    );
 
     const raw = completion.choices[0]?.message?.content || '[]';
     const parsed = JSON.parse(raw);
@@ -893,6 +925,7 @@ function heuristicAnalyze(content: string): {
       name,
       description: text,
       domain: guessDomains(text)[0] || '通用',
+      type: 'concept',
       mastery: 0,
     });
   }
@@ -905,6 +938,7 @@ function heuristicAnalyze(content: string): {
         name: p.slice(0, 12) + (p.length > 12 ? '…' : ''),
         description: p,
         domain: guessDomains(p)[0] || '通用',
+        type: 'concept',
         mastery: 0,
       });
     }
@@ -941,7 +975,7 @@ function scoreAndRankCandidates(candidates: string[]): { text: string; score: nu
 }
 
 function heuristicGenerateQuestions(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; type: string | null; note?: { title: string; contentType: string; content: string | null } | null }[],
   count = 5,
   creativeMode = false
 ): Omit<Question, 'id' | 'knowledgePointId'>[] {
@@ -980,6 +1014,7 @@ function heuristicGenerateQuestions(
         questionText: `关于"${kp.name}"，以下哪些描述是正确的？（多选）`,
         options,
         correctAnswer: correctLetters.join(','),
+        answerType: 'multiple',
         explanation: kp.description || `${kp.name}是一个重要的知识点。`,
         domain: kp.domain,
       });
@@ -1002,6 +1037,7 @@ function heuristicGenerateQuestions(
         questionText,
         options,
         correctAnswer: String.fromCharCode(65 + correctIndex),
+        answerType: 'single',
         explanation: kp.description || `${kp.name}是一个重要的知识点。`,
         domain: kp.domain,
       });
@@ -1014,7 +1050,7 @@ function heuristicGenerateQuestions(
 // ====== 简答题生成（LLM）======
 
 async function generateFillQuestionsLLM(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; type: string | null }[],
   count = 5
 ): Promise<Omit<Question, 'id' | 'knowledgePointId'>[]> {
   const systemPrompt = `你是一位资深的教育命题专家，擅长设计高质量的简答题。你的题目考察学生对知识点的深度理解和表达能力。`;
@@ -1046,15 +1082,17 @@ ${knowledgePoints.map((kp, i) => `【${i + 1}】${kp.name}（${kp.domain || '通
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.5,
-      response_format: { type: 'json_object' },
-    });
+    const completion = await withRetry(() =>
+      getOpenai().chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.5,
+        response_format: { type: 'json_object' },
+      })
+    );
 
     const raw = completion.choices[0]?.message?.content || '[]';
     const parsed = JSON.parse(raw);
@@ -1064,6 +1102,7 @@ ${knowledgePoints.map((kp, i) => `【${i + 1}】${kp.name}（${kp.domain || '通
       questionText: String(q.questionText || `请阐述"${knowledgePoints[idx]?.name}"的核心内容。`),
       options: (q.options || []).map(String).slice(0, 3),
       correctAnswer: String(q.correctAnswer || knowledgePoints[idx]?.description || ''),  
+      answerType: null,
       explanation: String(q.explanation || '请参考标准答案进行核对。'),
       domain: String(q.domain || knowledgePoints[idx]?.domain || '通用'),
     }));
@@ -1078,7 +1117,7 @@ ${knowledgePoints.map((kp, i) => `【${i + 1}】${kp.name}（${kp.domain || '通
 // ====== 简答题生成（启发式降级）======
 
 function heuristicGenerateFillQuestions(
-  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null }[],
+  knowledgePoints: { id: string; name: string; description: string | null; domain: string | null; type: string | null }[],
   count = 5
 ): Omit<Question, 'id' | 'knowledgePointId'>[] {
   const questions: Omit<Question, 'id' | 'knowledgePointId'>[] = [];
@@ -1090,6 +1129,7 @@ function heuristicGenerateFillQuestions(
       questionText: `请阐述"${kp.name}"的定义、核心内容及其在实际中的应用。`,
       options: ['说明定义', '分析核心内容', '举例应用场景'],
       correctAnswer: kp.description || `${kp.name}是一个重要的知识点。`,
+      answerType: null,
       explanation: '答题应包含定义、核心内容和应用三个方面的阐述。',
       domain: kp.domain,
     });

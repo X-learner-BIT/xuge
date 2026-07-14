@@ -1,9 +1,19 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
 import { hashPassword, verifyPassword, signToken } from '../lib/auth.js';
 
 const router = Router();
+
+// 登录/注册速率限制：单IP每分钟最多10次
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // 登录：支持手机号或邮箱（兼容旧版前端用 email 字段）
 const loginSchema = z.object({
@@ -24,7 +34,7 @@ const registerSchema = z.object({
   email: z.string().email('邮箱格式错误').optional().or(z.literal('')),
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   console.log('[REGISTER] request body:', JSON.stringify(req.body));
   try {
     const data = registerSchema.parse(req.body);
@@ -50,16 +60,12 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // 指定手机号自动设为管理员
-    const isAdmin = data.phone === '18962574183';
-
     const user = await prisma.user.create({
       data: {
         phone: data.phone,
         email: data.email || null,
         password: hashPassword(data.password),
         nickname: data.nickname || null,
-        role: isAdmin ? 'admin' : 'user',
       },
     });
 
@@ -71,7 +77,6 @@ router.post('/register', async (req, res) => {
         phone: user.phone,
         email: user.email,
         nickname: user.nickname,
-        role: user.role,
         createdAt: user.createdAt.toISOString(),
       },
     });
@@ -87,7 +92,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   console.log('[LOGIN] request body:', JSON.stringify(req.body));
   try {
     const data = loginSchema.parse(req.body);
@@ -115,7 +120,6 @@ router.post('/login', async (req, res) => {
         phone: user.phone,
         email: user.email,
         nickname: user.nickname,
-        role: user.role,
         createdAt: user.createdAt.toISOString(),
       },
     });
@@ -151,7 +155,6 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res) => {
         phone: updated.phone,
         email: updated.email,
         nickname: updated.nickname,
-        role: updated.role,
         createdAt: updated.createdAt.toISOString(),
       },
     });
